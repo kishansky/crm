@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Company from "@/components/ui/Company";
 
 export default function Login() {
 
@@ -28,21 +29,31 @@ export default function Login() {
         password,
       });
 
+      // ✅ Store everything
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      toast.success("Login successful 🚀");
+      toast.success(`Welcome ${res.data.user.name} 🚀`);
 
-      navigate("/dashboard");
+      // ✅ Role-based redirect
+      if (res.data.role === "admin") {
+        navigate("/dashboard");
+      } else {
+        navigate("/dashboard"); // same for now (can change later)
+      }
 
     } catch (err) {
-      toast.error("Invalid credentials ❌");
+      toast.error(err?.response?.data?.message || "Invalid credentials ❌");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-muted px-4">
+    <div className="h-screen flex flex-col items-center justify-center  gap-2 bg-muted px-4">
+
+      <div className="flex flex-col gap-6">
 
       <Card className="w-full max-w-md shadow-xl">
 
@@ -78,7 +89,8 @@ export default function Login() {
         </CardContent>
 
       </Card>
-
+      <Company />
+            </div>
     </div>
   );
 }

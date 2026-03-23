@@ -1,16 +1,36 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import Company from "../ui/Company";
 
 export default function Sidebar({ open, setOpen }) {
-
   const location = useLocation();
 
-  const menu = [
+  // ✅ Get role
+  const role = localStorage.getItem("role");
+
+  // ✅ Menu based on role
+  const adminMenu = [
     { name: "Dashboard", path: "/dashboard" },
-    { name: "Leads", path: "/leads" },
+    { name: "Leads", path: "/leads", match: ["/leads", "/lead"] },
     { name: "Sales Team", path: "/sales-team" },
     { name: "Performance", path: "/performance" },
   ];
+
+  const salesMenu = [
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Leads", path: "/leads", match: ["/leads", "/lead"] },
+  ];
+
+  const menu = role === "admin" ? adminMenu : salesMenu;
+
+  const isActive = (item) => {
+    if (item.match) {
+      return item.match.some((p) =>
+        location.pathname.startsWith(p)
+      );
+    }
+    return location.pathname.startsWith(item.path);
+  };
 
   return (
     <>
@@ -24,15 +44,17 @@ export default function Sidebar({ open, setOpen }) {
 
       <aside
         className={cn(
-          "fixed md:static z-50 h-full w-64 bg-background border-r transform transition-transform",
+          "fixed md:static z-50 h-full w-48 bg-background border-r transform transition-transform flex flex-col",
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
+        {/* TOP */}
+        <div className="h-14 p-4 font-bold border-b">
+          CRM ({role})
+        </div>
 
-        <div className="p-4 font-bold">CRM</div>
-
+        {/* MENU */}
         <nav className="p-2 space-y-1">
-
           {menu.map((item) => (
             <Link
               key={item.path}
@@ -40,7 +62,7 @@ export default function Sidebar({ open, setOpen }) {
               onClick={() => setOpen(false)}
               className={cn(
                 "block px-3 py-2 rounded-md text-sm",
-                location.pathname === item.path
+                isActive(item)
                   ? "bg-primary text-white"
                   : "hover:bg-muted"
               )}
@@ -48,9 +70,9 @@ export default function Sidebar({ open, setOpen }) {
               {item.name}
             </Link>
           ))}
-
         </nav>
 
+        <Company />
       </aside>
     </>
   );

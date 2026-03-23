@@ -22,6 +22,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
+import Loader from "@/components/ui/Loader";
 
 export default function Performance() {
 
@@ -31,6 +32,7 @@ export default function Performance() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({});
   const [editing, setEditing] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -42,8 +44,11 @@ export default function Performance() {
     try {
       const res = await api.get("/performance");
       setData(res.data);
+      setLoading(false);
+      
     } catch {
       toast.error("Failed to load performance");
+      setLoading(false);
     }
   };
 
@@ -116,6 +121,19 @@ export default function Performance() {
       return <Badge className="bg-red-100 text-red-700">Low</Badge>;
     }
   };
+
+      if (loading) {
+        return (<DashboardLayout>
+          <div className="flex justify-between mb-6">
+        <h1 className="text-xl font-semibold">Performance</h1>
+
+        <Button onClick={() => openModal()}>
+          + Add Record
+        </Button>
+      </div>
+          <Loader type="table"/>
+        </DashboardLayout>)
+    }
 
   return (
     <DashboardLayout>

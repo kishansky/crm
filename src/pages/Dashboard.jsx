@@ -14,6 +14,10 @@ import {
   CartesianGrid,
 } from "recharts";
 
+import Loader from "@/components/ui/Loader";
+import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+
 export default function Dashboard() {
 
   const [stats, setStats] = useState({
@@ -24,8 +28,13 @@ export default function Dashboard() {
 
   const [recentLeads, setRecentLeads] = useState([]);
   const [chartData, setChartData] = useState([]);
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+
+  // ✅ Role & User
+  const role = localStorage.getItem("role");
+  const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     fetchStats();
@@ -35,36 +44,45 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      const [leadsRes, salesRes, perfRes] = await Promise.all([
-        api.get("/leads"),
-        api.get("/sales-team"),
-        api.get("/performance"),
-      ]);
+      let leadsRes, salesRes, perfRes;
 
-      // ✅ HANDLE PAGINATION SAFE
-      const leadsData = leadsRes.data.data || leadsRes.data;
-      const salesData = salesRes.data.data || salesRes.data;
-      const perfData = perfRes.data.data || perfRes.data;
+      if (role === "admin") {
+        // ✅ ADMIN
+        [leadsRes, salesRes, perfRes] = await Promise.all([
+          api.get("/leads"),
+          api.get("/sales-team"),
+          api.get("/performance"),
+        ]);
+      } else {
+        // ✅ SALES (only own leads)
+        leadsRes = await api.get(`/leads?assigned_to=${user.sales_person_id}`);
+      }
 
-      // ✅ STATS
+      const leadsData = leadsRes?.data?.data || leadsRes?.data || [];
+      const salesData = salesRes?.data?.data || salesRes?.data || [];
+      const perfData = perfRes?.data?.data || perfRes?.data || [];
+
+      // ✅ Stats
       setStats({
         leads: leadsData.length,
-        sales: salesData.length,
-        performance: perfData.length,
+        sales: role === "admin" ? salesData.length : 0,
+        performance: role === "admin" ? perfData.length : 0,
       });
 
-      // ✅ RECENT LEADS (latest 5)
+      // ✅ Recent Leads
       setRecentLeads(leadsData.slice(0, 5));
 
-      // ✅ CHART DATA FORMAT
-      const formattedChart = perfData.map((item) => ({
-        report_date: item.report_date,
-        total_leads: Number(item.total_leads),
-        total_calls: Number(item.total_calls),
-        closed_ordered: Number(item.closed_ordered),
-      }));
+      // ✅ Chart (Admin only)
+      if (role === "admin") {
+        const formattedChart = perfData.map((item) => ({
+          report_date: item.report_date,
+          total_leads: Number(item.total_leads),
+          total_calls: Number(item.total_calls),
+          closed_ordered: Number(item.closed_ordered),
+        }));
 
-      setChartData(formattedChart);
+        setChartData(formattedChart);
+      }
 
     } catch (err) {
       console.log(err);
@@ -73,70 +91,36 @@ export default function Dashboard() {
     }
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="mb-6">
+          <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Overview of your CRM system
+          </p>
+        </div>
+        <Loader type="card" />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
 
       {/* HEADER */}
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-semibold">
-          Dashboard
+          Dashboard ({role})
         </h1>
         <p className="text-sm text-muted-foreground">
-          Overview of your CRM system
+          {role === "admin"
+            ? "Overview of your CRM system"
+            : "Overview of your assigned leads"}
         </p>
       </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-        {/* LEADS */}
-        <Card className="hover:shadow-md transition">
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Leads</p>
-              <h2 className="text-2xl font-bold">
-                {loading ? "..." : stats.leads}
-              </h2>
-            </div>
-            <div className="bg-blue-100 text-blue-600 p-3 rounded-xl">
-              <Users size={20} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SALES */}
-        <Card className="hover:shadow-md transition">
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Sales Team</p>
-              <h2 className="text-2xl font-bold">
-                {loading ? "..." : stats.sales}
-              </h2>
-            </div>
-            <div className="bg-green-100 text-green-600 p-3 rounded-xl">
-              <UserCheck size={20} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* PERFORMANCE */}
-        <Card className="hover:shadow-md transition">
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Performance</p>
-              <h2 className="text-2xl font-bold">
-                {loading ? "..." : stats.performance}
-              </h2>
-            </div>
-            <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
-              <BarChart3 size={20} />
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
-
-      {/* LOWER SECTION */}
+      {/* TOP GRID */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* RECENT LEADS */}
@@ -146,10 +130,7 @@ export default function Dashboard() {
           </CardHeader>
 
           <CardContent className="space-y-3">
-
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : recentLeads.length === 0 ? (
+            {recentLeads.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No leads found
               </p>
@@ -157,73 +138,101 @@ export default function Dashboard() {
               recentLeads.map((lead) => (
                 <div
                   key={lead.lead_id}
-                  className="flex justify-between border-b pb-2"
+                  className="flex justify-between border-b p-2 rounded-2xl hover:cursor-pointer hover:bg-gray-50"
+                  onClick={() => navigate(`/leads/${lead.lead_id}`)}
                 >
                   <div>
                     <p className="font-medium text-sm">
                       {lead.company_name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {lead.contact_person}
+                      {lead.contact_person} | {lead.phone_number}
                     </p>
                   </div>
 
-                  <span className="text-xs text-muted-foreground">
-                    {lead.source}
-                  </span>
+                  <Badge>{lead.source}</Badge>
                 </div>
               ))
             )}
-
           </CardContent>
         </Card>
 
-        {/* PERFORMANCE CHART */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Overview</CardTitle>
-          </CardHeader>
+        {/* PERFORMANCE CHART (ADMIN ONLY) */}
+        {role === "admin" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Overview</CardTitle>
+            </CardHeader>
 
-          <CardContent className="h-[300px]">
-
-            {loading ? (
-              <p className="text-sm text-muted-foreground">
-                Loading chart...
-              </p>
-            ) : (
+            <CardContent className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-
                   <CartesianGrid strokeDasharray="3 3" />
-
                   <XAxis dataKey="report_date" />
-
                   <Tooltip />
-
-                  <Bar
-                    dataKey="total_leads"
-                    fill="#3b82f6"
-                    radius={[6, 6, 0, 0]}
-                  />
-
-                  <Bar
-                    dataKey="total_calls"
-                    fill="#10b981"
-                    radius={[6, 6, 0, 0]}
-                  />
-
-                  <Bar
-                    dataKey="closed_ordered"
-                    fill="#a855f7"
-                    radius={[6, 6, 0, 0]}
-                  />
-
+                  <Bar dataKey="total_leads" fill="#3b82f6" />
+                  <Bar dataKey="total_calls" fill="#10b981" />
+                  <Bar dataKey="closed_ordered" fill="#a855f7" />
                 </BarChart>
               </ResponsiveContainer>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
+      </div>
+
+      {/* STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+
+        {/* LEADS */}
+        <Card>
+          <CardContent className="p-5 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {role === "admin" ? "Total Leads" : "My Leads"}
+              </p>
+              <h2 className="text-2xl font-bold">
+                {stats.leads}
+              </h2>
+            </div>
+            <div className="bg-blue-100 text-blue-600 p-3 rounded-xl">
+              <Users size={20} />
+            </div>
           </CardContent>
         </Card>
+
+        {/* ADMIN ONLY */}
+        {role === "admin" && (
+          <>
+            <Card>
+              <CardContent className="p-5 flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Sales Team</p>
+                  <h2 className="text-2xl font-bold">
+                    {stats.sales}
+                  </h2>
+                </div>
+                <div className="bg-green-100 text-green-600 p-3 rounded-xl">
+                  <UserCheck size={20} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5 flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Performance</p>
+                  <h2 className="text-2xl font-bold">
+                    {stats.performance}
+                  </h2>
+                </div>
+                <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
+                  <BarChart3 size={20} />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
       </div>
 

@@ -22,12 +22,14 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import Loader from "@/components/ui/Loader";
 
 export default function SalesTeam() {
   const [team, setTeam] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({});
   const [editing, setEditing] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchTeam();
@@ -38,8 +40,10 @@ export default function SalesTeam() {
     try {
       const res = await api.get("/sales-team");
       setTeam(res.data);
+      setLoading(false);
     } catch {
       toast.error("Failed to load team");
+      setLoading(false);
     }
   };
 
@@ -89,6 +93,19 @@ export default function SalesTeam() {
       toast.error("Delete failed ❌");
     }
   };
+
+    if (loading) {
+      return (<DashboardLayout>
+        <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
+        <h1 className="text-xl md:text-2xl font-semibold">Sales Team</h1>
+
+        <Button onClick={() => openModal()}>+ Add Member</Button>
+      </div>
+        <Loader type="table"/>
+      </DashboardLayout>)
+  }
+  
+  
 
   return (
     <DashboardLayout>
@@ -154,7 +171,7 @@ export default function SalesTeam() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Member" : "Add Member"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Sale Team" : "Add Sale Team"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3">
@@ -168,6 +185,11 @@ export default function SalesTeam() {
               placeholder="Email"
               value={form.email || ""}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <Input
+              placeholder="Password"
+              value={form.password || ""}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
 
             <select
