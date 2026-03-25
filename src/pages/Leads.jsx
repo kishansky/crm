@@ -16,14 +16,20 @@ import {
 import Loader from "@/components/ui/Loader";
 import { Badge } from "@/components/ui/badge";
 import { PhoneIcon } from "lucide-react";
-import { FaWhatsapp } from "react-icons/fa";
+import { FaFileExport, FaFileImport, FaWhatsapp } from "react-icons/fa";
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [sales, setSales] = useState([]);
 
-  const [search, setSearch] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [filters, setFilters] = useState({
+    search: "",
+    source: "",
+    status: "",
+    assigned_to: "",
+  });
+  const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
+
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
 
@@ -47,6 +53,7 @@ export default function Leads() {
     assigned_to: "",
     start_date: "",
     end_date: "",
+    limit: null,
   });
 
   const navigate = useNavigate();
@@ -56,29 +63,62 @@ export default function Leads() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
-    fetchLeads(page);
-
     if (role === "admin") {
       fetchSales();
     }
-  }, [page]);
+  }, []);
+  useEffect(() => {
+    fetchLeads(page);
+  }, [
+    page,
+    debouncedSearch,
+    filters.source,
+    filters.assigned_to,
+    filters.status,
+  ]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // ✅ Only allow if empty OR >= 3 chars
+      if (filters.search.length === 0 || filters.search.length >= 3) {
+        setDebouncedSearch(filters.search);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filters.source, filters.assigned_to, filters.status]);
 
   const fetchLeads = async (page = 1) => {
     try {
-      const res = await api.get(`/leads?page=${page}`);
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        page,
+        search: debouncedSearch || "", // ✅ use debounced value
+        source: filters.source || "",
+        assigned_to: filters.assigned_to || "",
+        status: filters.status || "", // ✅ NEW
+        // per_page:100
+      });
+
+      const res = await api.get(`/leads?${params.toString()}`);
 
       setLeads(res.data.data);
       setLastPage(res.data.last_page);
-      setLoading(false);
     } catch {
       toast.error("Failed to load leads");
+    } finally {
       setLoading(false);
     }
   };
 
   const fetchSales = async () => {
     const res = await api.get("/sales-team");
-    setSales(res.data);
+    setSales(res.data.data);
   };
 
   const openModal = (lead = null) => {
@@ -133,12 +173,6 @@ export default function Leads() {
     toast.success("Deleted");
     fetchLeads(page);
   };
-
-  const filtered = leads.filter(
-    (l) =>
-      l.company_name?.toLowerCase().includes(search.toLowerCase()) &&
-      (sourceFilter ? l.source === sourceFilter : true),
-  );
 
   // ✅ STATUS MODAL
   const [statusOpen, setStatusOpen] = useState(false);
@@ -278,6 +312,7 @@ export default function Leads() {
           assigned_to: exportFilters.assigned_to,
           start_date: exportFilters.start_date,
           end_date: exportFilters.end_date,
+          limit: exportFilters.limit,
         },
         { responseType: "blob" },
       );
@@ -300,13 +335,26 @@ export default function Leads() {
     }
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <Loader type="table" />
-      </DashboardLayout>
-    );
-  }
+  const bulkDelete = async () => {
+    if (selectedLeads.length === 0) {
+      return toast.error("No leads selected");
+    }
+
+    if (!confirm("Delete selected leads? 🗑️")) return;
+
+    try {
+      await api.post("/leads-bulk-delete", {
+        lead_ids: selectedLeads,
+      });
+
+      toast.success("Deleted successfully 🚀");
+
+      setSelectedLeads([]);
+      fetchLeads(page);
+    } catch {
+      toast.error("Delete failed ❌");
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -315,190 +363,260 @@ export default function Leads() {
         <div className="flex gap-3 flex-wrap">
           <Input
             placeholder="Search..."
-            className="w-full md:w-60"
-            onChange={(e) => setSearch(e.target.value)}
+            className="w-full md:w-52 bg-white/90"
+            value={filters.search}
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
           />
 
           <select
-            className="border rounded-md h-8 text-sm"
-            onChange={(e) => setSourceFilter(e.target.value)}
+            className="border rounded-md h-8 text-sm bg-white/90"
+            value={filters.source}
+            onChange={(e) => setFilters({ ...filters, source: e.target.value })}
           >
             <option value="">All Sources</option>
             <option value="website">Website</option>
             <option value="Ads">Ads</option>
           </select>
+
+          <select
+            className="border rounded-md h-8 text-sm bg-white/90"
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+          >
+            <option value="">All Status</option>
+
+            {[
+              "Follow-Up",
+              "Appointment Scheduled",
+              "Not Interested",
+              "Interested",
+              "Quotation Sent",
+              "Negotiation",
+              "Closed-Ordered",
+              "Closed-Lost",
+              "On Hold",
+              "Callback Requested",
+              "Unreachable",
+            ].map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          {role === "admin" && (
+            <select
+              className="border rounded-md h-8 text-sm bg-white/90"
+              value={filters.assigned_to}
+              onChange={(e) =>
+                setFilters({ ...filters, assigned_to: e.target.value })
+              }
+            >
+              <option value="">All Sales</option>
+              {sales.map((s) => (
+                <option key={s.sales_person_id} value={s.sales_person_id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="flex gap-2">
-          {role === "admin" && (
-            <Button variant="outline" onClick={() => setExportOpen(true)}>
-              Export Excel
+          {role === "admin" && selectedLeads.length > 0 && (
+            <Button variant="destructive" onClick={bulkDelete}>
+              Delete Bulk ({selectedLeads.length})
             </Button>
           )}
           {role === "admin" && selectedLeads.length > 0 && (
             <Button onClick={() => setAssignOpen(true)}>
-              Assign Selected ({selectedLeads.length})
+              Assign Bulk ({selectedLeads.length})
             </Button>
           )}
           {role === "admin" && (
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              Import Excel
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setExportOpen(true)}>
+                Export <FaFileExport />
+              </Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                Import <FaFileImport />
+              </Button>
+            </>
           )}
 
-          <Button onClick={() => openModal()}>+ Add Lead</Button>
+          <Button onClick={() => openModal()}>+ Lead</Button>
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="border rounded-lg overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              {role === "admin" && <th className="p-3 text-center">Select</th>}
-              <th className="p-3 text-left">Company</th>
-              <th className="p-3 text-left">Contact</th>
-              <th className="p-3 text-left">Phone</th>
-              <th className="p-3 text-left">Source</th>
-              <th className="p-3 text-left">Status</th>
-              <th className="p-3 text-left">Assigned</th>
-              <th className="p-3 text-center">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((lead) => {
-              const latestStatus =
-                lead.status_history?.[lead.status_history.length - 1];
-
-              return (
-                <tr
-                  key={lead.lead_id}
-                  className="border-t hover:bg-muted/50 cursor-pointer"
-                  onClick={() => navigate(`/leads/${lead.lead_id}`)}
-                >
+      {loading ? (
+        <Loader type="table" />
+      ) : (
+        <>
+          {/* TABLE */}
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted">
+                <tr>
                   {role === "admin" && (
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedLeads.includes(lead.lead_id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedLeads([...selectedLeads, lead.lead_id]);
-                          } else {
-                            setSelectedLeads(
-                              selectedLeads.filter((id) => id !== lead.lead_id),
-                            );
-                          }
-                        }}
-                      />
-                    </td>
+                    <th className="p-3 text-center">Select</th>
                   )}
-                  <td className="p-3">{lead.company_name}</td>
-                  <td className="p-3">{lead.contact_person}</td>
-                  <td className="p-3">
-                    <a
-                      href={`tel:${lead.phone_number}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {lead.phone_number}
-                    </a>
-                  </td>
-                  <td className="p-3">{lead.source}</td>
+                  <th className="p-3 text-left">Company</th>
+                  <th className="p-3 text-left">Contact</th>
+                  <th className="p-3 text-left">Phone</th>
+                  <th className="p-3 text-left">Source</th>
+                  <th className="p-3 text-left">Status</th>
+                  {role === "admin" && (
+                    <th className="p-3 text-left">Assigned</th>
+                  )}
 
-                  <td className="p-3">
-                    <Badge
-                      className={getStatusColor(
-                        lead.status_history[0]?.status_type,
-                      )}
-                    >
-                      {lead.status_history[0]?.status_type}
-                    </Badge>
-                  </td>
-
-                  <td className="p-3">{lead.sales_person?.name}</td>
-
-                  <td className="p-3 space-x-2 text-center">
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.href = `tel:${lead.phone_number}`;
-                      }}
-                      className={"bg-blue-500"}
-                    >
-                      <PhoneIcon />
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-green-500 hover:bg-green-600 text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(
-                          `https://wa.me/${lead.phone_number}`,
-                          "_blank",
-                        );
-                      }}
-                    >
-                      <FaWhatsapp size={16} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedLeadId(lead.lead_id);
-                        setStatusOpen(true);
-                      }}
-                    >
-                      + Add Status
-                    </Button>
-
-                    {role === "admin" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openModal(lead);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteLead(lead.lead_id);
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </>
-                    )}
-                  </td>
+                  <th className="p-3 text-center">Action</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
 
-      {/* PAGINATION */}
-      <div className="flex justify-center gap-2 mt-4 flex-wrap">
-        {[...Array(lastPage)].map((_, i) => (
-          <Button
-            key={i}
-            variant={page === i + 1 ? "default" : "outline"}
-            onClick={() => setPage(i + 1)}
-          >
-            {i + 1}
-          </Button>
-        ))}
-      </div>
+              <tbody>
+                {leads.map((lead) => {
+                  // const latestStatus =
+                  //   lead.status_history?.[lead.status_history.length - 1];
+
+                  return (
+                    <tr
+                      key={lead.lead_id}
+                      className="border-t hover:bg-muted/50 cursor-pointer"
+                      onClick={() => navigate(`/leads/${lead.lead_id}`)}
+                    >
+                      {role === "admin" && (
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedLeads.includes(lead.lead_id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedLeads([
+                                  ...selectedLeads,
+                                  lead.lead_id,
+                                ]);
+                              } else {
+                                setSelectedLeads(
+                                  selectedLeads.filter(
+                                    (id) => id !== lead.lead_id,
+                                  ),
+                                );
+                              }
+                            }}
+                          />
+                        </td>
+                      )}
+                      <td className="p-3">{lead.company_name}</td>
+                      <td className="p-3">{lead.contact_person}</td>
+                      <td className="p-3">
+                        <a
+                          href={`tel:${lead.phone_number}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {lead.phone_number}
+                        </a>
+                      </td>
+                      <td className="p-3">{lead.source}</td>
+
+                      <td className="p-3">
+                        {
+                          lead.latest_status && <Badge
+                          className={getStatusColor(
+                            lead.latest_status?.status_type,
+                          )}
+                        >
+                          {lead.latest_status?.status_type}
+                        </Badge>
+                        }
+                        
+                      </td>
+                      {role === "admin" && (
+                        <td className="p-3">{lead.sales_person?.name}</td>
+                      )}
+
+                      <td className="p-3 space-x-2 text-center">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `tel:${lead.phone_number}`;
+                          }}
+                          className={"bg-blue-500"}
+                        >
+                          <PhoneIcon />
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-green-500 hover:bg-green-600 text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(
+                              `https://wa.me/${lead.phone_number}`,
+                              "_blank",
+                            );
+                          }}
+                        >
+                          <FaWhatsapp size={16} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLeadId(lead.lead_id);
+                            setStatusOpen(true);
+                          }}
+                        >
+                          + Status
+                        </Button>
+
+                        {role === "admin" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModal(lead);
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteLead(lead.lead_id);
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* PAGINATION */}
+          <div className="flex justify-center gap-2 mt-4 flex-wrap">
+            {[...Array(lastPage)].map((_, i) => (
+              <Button
+                key={i}
+                variant={page === i + 1 ? "default" : "outline"}
+                onClick={() => setPage(i + 1)}
+              >
+                {i + 1}
+              </Button>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -589,7 +707,7 @@ export default function Leads() {
           </DialogHeader>
 
           <select
-            className="border p-2 w-full rounded"
+            className="border p-2 w-full rounded mb-2"
             value={statusForm.status_type}
             onChange={(e) =>
               setStatusForm({
@@ -700,7 +818,7 @@ export default function Leads() {
 
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className={"mb-2"}>
             <DialogTitle>Select Columns to Export</DialogTitle>
           </DialogHeader>
 
@@ -725,6 +843,7 @@ export default function Leads() {
             </select>
 
             {/* DATE RANGE */}
+            <label htmlFor="">Starting Date</label>
             <input
               type="date"
               className="border p-2 w-full"
@@ -736,6 +855,7 @@ export default function Leads() {
               }
             />
 
+            <label htmlFor="">Ending Date</label>
             <input
               type="date"
               className="border p-2 w-full"
@@ -743,6 +863,7 @@ export default function Leads() {
                 setExportFilters({ ...exportFilters, end_date: e.target.value })
               }
             />
+            <h4 className="font-semibold">Columns</h4>
 
             {/* COLUMN SELECT */}
             {EXPORT_COLUMNS.map((col) => (
@@ -764,6 +885,19 @@ export default function Leads() {
               </label>
             ))}
 
+            {/* DATE RANGE */}
+
+            <label>Number of row (optional)</label>
+            <input
+              type="number"
+              className="border p-2 w-full"
+              onChange={(e) =>
+                setExportFilters({
+                  ...exportFilters,
+                  limit: e.target.value,
+                })
+              }
+            />
             <Button onClick={exportExcel} className="w-full mt-3">
               Download Excel
             </Button>

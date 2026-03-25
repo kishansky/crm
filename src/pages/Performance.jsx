@@ -55,7 +55,7 @@ export default function Performance() {
   const fetchSales = async () => {
     try {
       const res = await api.get("/sales-team");
-      setSales(res.data);
+      setSales(res.data.data);
     } catch {
       toast.error("Failed to load sales team");
     }

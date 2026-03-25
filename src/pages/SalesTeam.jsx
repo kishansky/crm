@@ -31,18 +31,51 @@ export default function SalesTeam() {
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [filters, setFilters] = useState({
+    search: "",
+    is_active: "",
+  });
+
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+
   useEffect(() => {
-    fetchTeam();
-  }, []);
+    const timer = setTimeout(() => {
+      if (filters.search.length === 0 || filters.search.length >= 3) {
+        setDebouncedSearch(filters.search);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
+  useEffect(() => {
+    fetchTeam(page);
+  }, [page, debouncedSearch, filters.is_active]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filters.is_active]);
 
   // ✅ FETCH
-  const fetchTeam = async () => {
+  const fetchTeam = async (pageNum = 1) => {
     try {
-      const res = await api.get("/sales-team");
-      setTeam(res.data);
-      setLoading(false);
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        page: pageNum,
+        search: debouncedSearch || "",
+        is_active: filters.is_active,
+      });
+
+      const res = await api.get(`/sales-team?${params}`);
+
+      setTeam(res.data.data);
+      setLastPage(res.data.last_page);
     } catch {
       toast.error("Failed to load team");
+    } finally {
       setLoading(false);
     }
   };
@@ -94,29 +127,51 @@ export default function SalesTeam() {
     }
   };
 
-    if (loading) {
-      return (<DashboardLayout>
-        <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
-        <h1 className="text-xl md:text-2xl font-semibold">Sales Team</h1>
-
-        <Button onClick={() => openModal()}>+ Add Member</Button>
-      </div>
-        <Loader type="table"/>
-      </DashboardLayout>)
-  }
-  
-  
+  // if (loading) {
+  //   return (
+  //     <DashboardLayout>
+        
+  //       <Loader type="table" />
+  //     </DashboardLayout>
+  //   );
+  // }
 
   return (
     <DashboardLayout>
       {/* HEADER */}
       <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
-        <h1 className="text-xl md:text-2xl font-semibold">Sales Team</h1>
+          {/* <h1 className="text-xl md:text-2xl font-semibold">Sales Team</h1> */}
+          <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
+            <div className="flex gap-3 flex-wrap">
+              <Input
+                placeholder="Search..."
+                className="w-full md:w-52 bg-white/90"
+                value={filters.search}
+                onChange={(e) =>
+                  setFilters({ ...filters, search: e.target.value })
+                }
+              />
 
-        <Button onClick={() => openModal()}>+ Add Member</Button>
+              <select
+                className="border rounded-md h-8 text-sm bg-white/90"
+                value={filters.is_active}
+                onChange={(e) =>
+                  setFilters({ ...filters, is_active: e.target.value })
+                }
+              >
+                <option value="">All Status</option>
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
+              </select>
+            </div>
+
+          </div>
+          <Button onClick={() => openModal()}>+ Add Member</Button>
       </div>
-
-      {/* TABLE */}
+      
+      {
+        !loading ? (<>
+        {/* TABLE */}
       <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
@@ -165,13 +220,31 @@ export default function SalesTeam() {
             ))}
           </TableBody>
         </Table>
+        
       </div>
+      <div className="flex justify-center gap-2 mt-4 flex-wrap">
+          {[...Array(lastPage)].map((_, i) => (
+            <Button
+              key={i}
+              variant={page === i + 1 ? "default" : "outline"}
+              onClick={() => setPage(i + 1)}
+            >
+              {i + 1}
+            </Button>
+          ))}
+          </div>
+        </>) : <Loader type="table" />
+      }
+
+      
 
       {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Sale Team" : "Add Sale Team"}</DialogTitle>
+            <DialogTitle>
+              {editing ? "Edit Sale Team" : "Add Sale Team"}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3">

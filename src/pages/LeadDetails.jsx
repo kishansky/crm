@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
+import { FaWhatsapp } from "react-icons/fa";
+import { PhoneIcon } from "lucide-react";
 
 export default function LeadDetails() {
   const { id } = useParams();
@@ -57,7 +59,7 @@ export default function LeadDetails() {
 
   const fetchSales = async () => {
     const res = await api.get("/sales-team");
-    setSales(res.data);
+    setSales(res.data.data);
   };
 
   const openModal = (lead = null) => {
@@ -220,20 +222,43 @@ export default function LeadDetails() {
         </div>
 
         <div className="flex gap-3">
-          
-
-          {role === "admin" && (<>
-            <Button size="sm" variant="outline" onClick={() => openModal(lead)}>
-            Edit
+          <Button
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.location.href = `tel:${lead.phone_number}`;
+            }}
+            className={"bg-blue-500"}
+          >
+            <PhoneIcon /> Phone
           </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => deleteLead(lead.lead_id)}
+          <Button
+            size="sm"
+            className="bg-green-500 hover:bg-green-600 text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(`https://wa.me/${lead.phone_number}`, "_blank");
+            }}
+          >
+            <FaWhatsapp size={16} /> WhatsApp
+          </Button>
+          {role === "admin" && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openModal(lead)}
               >
-              Delete
-            </Button>
-              </>
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => deleteLead(lead.lead_id)}
+              >
+                Delete
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -242,11 +267,13 @@ export default function LeadDetails() {
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Company Info</CardTitle>
+            <CardTitle>
+              Company Info { lead.source && <Badge>{lead.source}</Badge>}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p>{lead.company_name}</p>
-            <Badge>{lead.source}</Badge>
+
             <p className="text-xs mt-2">{lead.enquiry_description}</p>
           </CardContent>
         </Card>
@@ -256,7 +283,7 @@ export default function LeadDetails() {
             <CardTitle>Contact</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>{lead.contact_person}</p>
+            <p><a href={`tel:${lead.phone_number}`} target="_blank" rel="noopener noreferrer">{lead.contact_person}</a></p>
             <p>{lead.phone_number}</p>
             <p>{lead.email}</p>
           </CardContent>
@@ -295,70 +322,129 @@ export default function LeadDetails() {
           </CardContent> */}
 
           <CardContent>
-  {lead.status_history?.length === 0 ? (
-    <p className="text-sm text-muted-foreground">No status</p>
-  ) : (
-    <div className="relative pl-2">
+            {lead.status_history?.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No status</p>
+            ) : (
+              <div className="relative pl-2">
+                {[...(lead.status_history || [])]
+                  .sort(
+                    (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
+                  )
+                  .map((s, index) => (
+                    <div key={s.history_id} className="relative mb-4">
+                      {/* LINE */}
+                      {index !== lead.status_history.length - 1 && (
+                        <span
+                          className={`absolute left-1.5 top-5 w-[2px] h-[80%] ${getStatusStepColor(s.status_type)}`}
+                        ></span>
+                      )}
 
-      {[...(lead.status_history || [])]
-        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-        .map((s, index) => (
-          <div key={s.history_id} className="relative mb-4">
+                      {/* DOT */}
+                      <div
+                        className={`absolute left-0 top-1 w-3 h-3 rounded-full ${getStatusStepColor(s.status_type)}`}
+                      ></div>
 
-             {/* LINE */}
-            {index !== lead.status_history.length - 1 && (
-              <span
-                className={`absolute left-1.5 top-5 w-[2px] h-[80%] ${getStatusStepColor(s.status_type)}`}
-              ></span>
-            )}
+                      {/* CONTENT */}
+                      <div className="ml-6 border rounded-lg p-3 bg-white shadow-sm">
+                        <div className="flex justify-between items-center mb-1">
+                          <Badge className={getStatusColor(s.status_type)}>
+                            {s.status_type}
+                          </Badge>
 
-            {/* DOT */}
-            <div
-              className={`absolute left-0 top-1 w-3 h-3 rounded-full ${getStatusStepColor(s.status_type)}`}
-            ></div>
+                          <span className="text-xs text-muted-foreground font-semibold">
+                            {new Date(s.updated_at).toLocaleString()}
+                          </span>
+                        </div>
 
-            {/* CONTENT */}
-            <div className="ml-6 border rounded-lg p-3 bg-white shadow-sm">
-
-              <div className="flex justify-between items-center mb-1">
-                <Badge className={getStatusColor(s.status_type)}>
-                  {s.status_type}
-                </Badge>
-
-                <span className="text-xs text-muted-foreground font-semibold">
-                  {new Date(s.updated_at).toLocaleString()}
-                </span>
+                        <p className="text-sm">{s.remark || "No remark"}</p>
+                      </div>
+                    </div>
+                  ))}
               </div>
-
-              <p className="text-sm">
-                {s.remark || "No remark"}
-              </p>
-
-            </div>
-
-          </div>
-        ))}
-
-    </div>
-  )}
-</CardContent>
+            )}
+          </CardContent>
         </Card>
       </div>
 
       {/* EDIT MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Lead</DialogTitle>
+            <DialogTitle>{editing ? "Edit Lead" : "Add Lead"}</DialogTitle>
           </DialogHeader>
 
-          <Input
-            placeholder="Company"
-            value={form.company_name || ""}
-            onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              placeholder="Company"
+              value={form.company_name || ""}
+              onChange={(e) =>
+                setForm({ ...form, company_name: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Contact Person"
+              value={form.contact_person || ""}
+              onChange={(e) =>
+                setForm({ ...form, contact_person: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Phone"
+              value={form.phone_number || ""}
+              onChange={(e) =>
+                setForm({ ...form, phone_number: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Email"
+              value={form.email || ""}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+
+            <Input
+              placeholder="Source"
+              value={form.source || ""}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+            />
+
+            {/* ✅ ADMIN ONLY ASSIGN */}
+            {role === "admin" && (
+              <select
+                className="border rounded p-2 w-full"
+                value={form.assigned_to || ""}
+                onChange={(e) =>
+                  setForm({ ...form, assigned_to: e.target.value })
+                }
+              >
+                <option value="">Assign Sales</option>
+
+                {sales.map((s) => (
+                  <option key={s.sales_person_id} value={s.sales_person_id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <textarea
+            placeholder="Description"
+            className="border p-2 rounded w-full mt-3"
+            value={form.enquiry_description || ""}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                enquiry_description: e.target.value,
+              })
+            }
           />
 
-          <Button onClick={saveLead}>Save</Button>
+          <Button onClick={saveLead} className="w-full mt-4">
+            Save Lead
+          </Button>
         </DialogContent>
       </Dialog>
 
@@ -370,7 +456,7 @@ export default function LeadDetails() {
           </DialogHeader>
 
           <select
-            className="border p-2 w-full rounded"
+            className="border p-2 w-full rounded mb-2"
             value={statusForm.status_type}
             onChange={(e) =>
               setStatusForm({
