@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
 import { FaWhatsapp } from "react-icons/fa";
 import { PhoneIcon } from "lucide-react";
+import { MdDelete, MdEdit } from "react-icons/md";
 
 export default function LeadDetails() {
   const { id } = useParams();
@@ -249,14 +250,14 @@ export default function LeadDetails() {
                 variant="outline"
                 onClick={() => openModal(lead)}
               >
-                Edit
+               <MdEdit /> Edit
               </Button>
               <Button
                 size="sm"
                 variant="destructive"
                 onClick={() => deleteLead(lead.lead_id)}
               >
-                Delete
+               <MdDelete /> Delete
               </Button>
             </>
           )}

@@ -23,6 +23,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import Loader from "@/components/ui/Loader";
+import { MdDelete, MdEdit } from "react-icons/md";
 
 export default function Performance() {
 
@@ -187,7 +188,7 @@ export default function Performance() {
                     variant="outline"
                     onClick={() => openModal(item)}
                   >
-                    Edit
+                   <MdEdit /> Edit
                   </Button>
 
                   <Button
@@ -195,7 +196,7 @@ export default function Performance() {
                     variant="destructive"
                     onClick={() => deleteItem(item.perf_id)}
                   >
-                    Delete
+                   <MdDelete /> Delete
                   </Button>
 
                 </TableCell>

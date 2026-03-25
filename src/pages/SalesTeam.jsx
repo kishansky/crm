@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Loader from "@/components/ui/Loader";
+import { MdDelete, MdEdit } from "react-icons/md";
 
 export default function SalesTeam() {
   const [team, setTeam] = useState([]);
@@ -205,7 +206,7 @@ export default function SalesTeam() {
                     variant="outline"
                     onClick={() => openModal(user)}
                   >
-                    Edit
+                   <MdEdit /> Edit
                   </Button>
 
                   <Button
@@ -213,7 +214,7 @@ export default function SalesTeam() {
                     variant="destructive"
                     onClick={() => deleteUser(user.sales_person_id)}
                   >
-                    Delete
+                    <MdDelete /> Delete
                   </Button>
                 </TableCell>
               </TableRow>

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { MdLogout } from "react-icons/md";
 
 
 export default function Header({ setOpen }) {
@@ -31,7 +32,7 @@ export default function Header({ setOpen }) {
           window.location.href = "/";
         }}
       >
-        Logout
+       <MdLogout /> Logout
       </Button>
 
     </header>

@@ -63,7 +63,7 @@ export default function Sidebar({ open, setOpen }) {
               className={cn(
                 "block px-3 py-2 rounded-md text-sm",
                 isActive(item)
-                  ? "bg-primary text-white"
+                  ? "bg-primary text-white hover:bg-primary/90"
                   : "hover:bg-muted"
               )}
             >

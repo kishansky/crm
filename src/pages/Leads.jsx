@@ -15,8 +15,16 @@ import {
 } from "@/components/ui/dialog";
 import Loader from "@/components/ui/Loader";
 import { Badge } from "@/components/ui/badge";
-import { PhoneIcon } from "lucide-react";
-import { FaFileExport, FaFileImport, FaWhatsapp } from "react-icons/fa";
+import { Delete, PhoneIcon } from "lucide-react";
+import {
+  FaEdit,
+  FaFileExport,
+  FaFileImport,
+  FaPlus,
+  FaRegEdit,
+  FaWhatsapp,
+} from "react-icons/fa";
+import { MdAdd, MdAssignmentInd, MdDelete, MdEdit } from "react-icons/md";
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
@@ -360,16 +368,16 @@ export default function Leads() {
     <DashboardLayout>
       {/* HEADER */}
       <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
           <Input
             placeholder="Search..."
-            className="w-full md:w-52 bg-white/90"
+            className="w-full md:w-40 bg-white/90"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
           />
 
           <select
-            className="border rounded-md h-8 text-sm bg-white/90"
+            className="border rounded-md h-8 text-sm bg-white/90 md:max-w-32"
             value={filters.source}
             onChange={(e) => setFilters({ ...filters, source: e.target.value })}
           >
@@ -379,7 +387,7 @@ export default function Leads() {
           </select>
 
           <select
-            className="border rounded-md h-8 text-sm bg-white/90"
+            className="border rounded-md h-8 text-sm bg-white/90 md:max-w-36"
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           >
@@ -406,7 +414,7 @@ export default function Leads() {
 
           {role === "admin" && (
             <select
-              className="border rounded-md h-8 text-sm bg-white/90"
+              className="border rounded-md h-8 text-sm bg-white/90 md:max-w-32"
               value={filters.assigned_to}
               onChange={(e) =>
                 setFilters({ ...filters, assigned_to: e.target.value })
@@ -424,14 +432,15 @@ export default function Leads() {
 
         <div className="flex gap-2">
           {role === "admin" && selectedLeads.length > 0 && (
-            <Button variant="destructive" onClick={bulkDelete}>
-              Delete Bulk ({selectedLeads.length})
-            </Button>
-          )}
-          {role === "admin" && selectedLeads.length > 0 && (
-            <Button onClick={() => setAssignOpen(true)}>
-              Assign Bulk ({selectedLeads.length})
-            </Button>
+            <>
+              <Button variant="destructive" onClick={bulkDelete}>
+                <MdDelete /> Delete ({selectedLeads.length})
+              </Button>
+
+              <Button onClick={() => setAssignOpen(true)}>
+                <MdAssignmentInd />Assign ({selectedLeads.length})
+              </Button>
+            </>
           )}
           {role === "admin" && (
             <>
@@ -521,16 +530,15 @@ export default function Leads() {
                       <td className="p-3">{lead.source}</td>
 
                       <td className="p-3">
-                        {
-                          lead.latest_status && <Badge
-                          className={getStatusColor(
-                            lead.latest_status?.status_type,
-                          )}
-                        >
-                          {lead.latest_status?.status_type}
-                        </Badge>
-                        }
-                        
+                        {lead.latest_status && (
+                          <Badge
+                            className={getStatusColor(
+                              lead.latest_status?.status_type,
+                            )}
+                          >
+                            {lead.latest_status?.status_type}
+                          </Badge>
+                        )}
                       </td>
                       {role === "admin" && (
                         <td className="p-3">{lead.sales_person?.name}</td>
@@ -543,7 +551,7 @@ export default function Leads() {
                             e.stopPropagation();
                             window.location.href = `tel:${lead.phone_number}`;
                           }}
-                          className={"bg-blue-500"}
+                          className={"bg-blue-500 hover:bg-blue-500/90"}
                         >
                           <PhoneIcon />
                         </Button>
@@ -568,20 +576,21 @@ export default function Leads() {
                             setStatusOpen(true);
                           }}
                         >
-                          + Status
+                          <MdAdd /> Status
                         </Button>
 
                         {role === "admin" && (
                           <>
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="secondary"
+                              className={"bg-amber-100 hover:bg-amber-200"}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openModal(lead);
                               }}
                             >
-                              Edit
+                              <FaRegEdit className="text-secondary-foreground " />
                             </Button>
                             <Button
                               size="sm"
@@ -591,7 +600,7 @@ export default function Leads() {
                                 deleteLead(lead.lead_id);
                               }}
                             >
-                              Delete
+                              <MdDelete />
                             </Button>
                           </>
                         )}
@@ -618,7 +627,7 @@ export default function Leads() {
         </>
       )}
 
-      {/* MODAL */}
+      {/* ADD/EDIT MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -700,6 +709,7 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
+      {/* ADD Status MODAL */}
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
         <DialogContent>
           <DialogHeader>
@@ -753,6 +763,7 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
+      {/* Import Lead MODAL */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -790,6 +801,7 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
+      {/* Assign Lead MODAL */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
           <DialogHeader>
@@ -816,6 +828,7 @@ export default function Leads() {
         </DialogContent>
       </Dialog>
 
+      {/* Export Lead MODAL */}
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>
         <DialogContent>
           <DialogHeader className={"mb-2"}>
