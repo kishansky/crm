@@ -215,81 +215,118 @@ export default function LeadDetails() {
 
   return (
     <DashboardLayout>
-      {/* HEADER */}
-      <div className="mb-6 flex justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{lead.company_name}</h1>
-          <p className="text-sm text-muted-foreground">Lead Details Overview</p>
-        </div>
+{/* HEADER */}
+<div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-        <div className="flex gap-3">
-          <Button
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.location.href = `tel:${lead.phone_number}`;
-            }}
-            className={"bg-blue-500"}
-          >
-            <PhoneIcon /> Phone
-          </Button>
-          <Button
-            size="sm"
-            className="bg-green-500 hover:bg-green-600 text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(`https://wa.me/${lead.phone_number}`, "_blank");
-            }}
-          >
-            <FaWhatsapp size={16} /> WhatsApp
-          </Button>
-          {role === "admin" && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openModal(lead)}
-              >
-               <MdEdit /> Edit
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => deleteLead(lead.lead_id)}
-              >
-               <MdDelete /> Delete
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+  {/* LEFT */}
+  <div>
+    <h1 className="text-xl sm:text-2xl font-semibold break-words">
+      {lead.company_name}
+    </h1>
+    <p className="text-sm text-muted-foreground">
+      Lead Details Overview
+    </p>
+  </div>
+
+  {/* RIGHT ACTIONS */}
+  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+
+    <Button
+      size="sm"
+      className="bg-blue-500 flex-1 sm:flex-none"
+      onClick={(e) => {
+        e.stopPropagation();
+        window.location.href = `tel:${lead.phone_number}`;
+      }}
+    >
+      <PhoneIcon /> Phone
+    </Button>
+
+    <Button
+      size="sm"
+      className="bg-green-500 hover:bg-green-600 text-white flex-1 sm:flex-none"
+      onClick={(e) => {
+        e.stopPropagation();
+        window.open(`https://wa.me/${lead.phone_number}`, "_blank");
+      }}
+    >
+      <FaWhatsapp size={16} /> WhatsApp
+    </Button>
+
+    {role === "admin" && (
+      <>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 sm:flex-none"
+          onClick={() => openModal(lead)}
+        >
+          <MdEdit /> Edit
+        </Button>
+
+        <Button
+          size="sm"
+          variant="destructive"
+          className="flex-1 sm:flex-none"
+          onClick={() => deleteLead(lead.lead_id)}
+        >
+          <MdDelete /> Delete
+        </Button>
+      </>
+    )}
+  </div>
+</div>
 
       {/* COMPANY + CONTACT */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Company Info { lead.source && <Badge>{lead.source}</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>{lead.company_name}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <p className="text-xs mt-2">{lead.enquiry_description}</p>
-          </CardContent>
-        </Card>
+  {/* COMPANY */}
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 flex-wrap">
+        Company Info
+        {lead.source && <Badge>{lead.source}</Badge>}
+      </CardTitle>
+    </CardHeader>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Contact</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p><a href={`tel:${lead.phone_number}`} target="_blank" rel="noopener noreferrer">{lead.contact_person}</a></p>
-            <p>{lead.phone_number}</p>
-            <p>{lead.email}</p>
-          </CardContent>
-        </Card>
-      </div>
+    <CardContent className="space-y-2">
+      <p className="font-medium break-words">{lead.company_name}</p>
+      <p className="text-xs text-muted-foreground break-words">
+        {lead.enquiry_description || "No description"}
+      </p>
+    </CardContent>
+  </Card>
+
+  {/* CONTACT */}
+  <Card>
+    <CardHeader>
+      <CardTitle>Contact</CardTitle>
+    </CardHeader>
+
+    <CardContent className="space-y-2 text-sm">
+
+      <p className="break-words">
+        <b>Name:</b> {lead.contact_person || "-"}
+      </p>
+
+      <p className="break-words">
+        <b>Phone:</b>{" "}
+        <a
+          href={`tel:${lead.phone_number}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-blue-500"
+        >
+          {lead.phone_number || "-"}
+        </a>
+      </p>
+
+      <p className="break-words">
+        <b>Email:</b> {lead.email || "-"}
+      </p>
+
+    </CardContent>
+  </Card>
+</div>
 
       {/* TIMELINE */}
       <div className="mt-6">
@@ -336,7 +373,7 @@ export default function LeadDetails() {
                       {/* LINE */}
                       {index !== lead.status_history.length - 1 && (
                         <span
-                          className={`absolute left-1.5 top-5 w-[2px] h-[80%] ${getStatusStepColor(s.status_type)}`}
+                          className={`absolute left-[5px] top-5 w-[2px] h-[90%] ${getStatusStepColor(s.status_type)}`}
                         ></span>
                       )}
 
@@ -347,18 +384,22 @@ export default function LeadDetails() {
 
                       {/* CONTENT */}
                       <div className="ml-6 border rounded-lg p-3 bg-white shadow-sm">
-                        <div className="flex justify-between items-center mb-1">
-                          <Badge className={getStatusColor(s.status_type)}>
-                            {s.status_type}
-                          </Badge>
 
-                          <span className="text-xs text-muted-foreground font-semibold">
-                            {new Date(s.updated_at).toLocaleString()}
-                          </span>
-                        </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 mb-1">
+                    <Badge className={getStatusColor(s.status_type)}>
+                      {s.status_type}
+                    </Badge>
 
-                        <p className="text-sm">{s.remark || "No remark"}</p>
-                      </div>
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      {new Date(s.updated_at).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <p className="text-sm break-words">
+                    {s.remark || "No remark"}
+                  </p>
+
+                </div>
                     </div>
                   ))}
               </div>

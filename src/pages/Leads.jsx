@@ -190,9 +190,9 @@ export default function Leads() {
   });
 
   const EXPORT_COLUMNS = [
-    "company_name",
+    "company",
     "contact_person",
-    "phone_number",
+    "phone",
     "email",
     "source",
     "latest_status",
@@ -271,11 +271,13 @@ export default function Leads() {
         formData.append("assigned_to", importAssign);
       }
 
-      await api.post("/leads-import-excel", formData, {
+      let result = await api.post("/leads-import-excel", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      toast.success("Excel imported 🚀");
+      console.log(result);
+
+      toast.success(result?.data?.message);
 
       setImportOpen(false);
       setImportFile(null);
@@ -364,20 +366,52 @@ export default function Leads() {
     }
   };
 
+  const getPagination = (current, total) => {
+    const delta = 1; // how many pages around current
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = 1; i <= total; i++) {
+      if (
+        i === 1 ||
+        i === total ||
+        (i >= current - delta && i <= current + delta)
+      ) {
+        range.push(i);
+      }
+    }
+
+    let prev;
+    for (let i of range) {
+      if (prev) {
+        if (i - prev === 2) {
+          rangeWithDots.push(prev + 1);
+        } else if (i - prev > 2) {
+          rangeWithDots.push("...");
+        }
+      }
+      rangeWithDots.push(i);
+      prev = i;
+    }
+
+    return rangeWithDots;
+  };
+
   return (
     <DashboardLayout>
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-col gap-4 mb-6">
+        {/* TOP: Filters */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
           <Input
             placeholder="Search..."
-            className="w-full md:w-40 bg-white/90"
+            className="w-full sm:w-48 bg-white/90 h-9"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
           />
 
           <select
-            className="border rounded-md h-8 text-sm bg-white/90 md:max-w-32"
+            className="w-full sm:w-40 border rounded-md h-9 text-sm bg-white/90 px-2"
             value={filters.source}
             onChange={(e) => setFilters({ ...filters, source: e.target.value })}
           >
@@ -387,12 +421,11 @@ export default function Leads() {
           </select>
 
           <select
-            className="border rounded-md h-8 text-sm bg-white/90 md:max-w-36"
+            className="w-full sm:w-52 border rounded-md h-9 text-sm bg-white/90 px-2"
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           >
             <option value="">All Status</option>
-
             {[
               "Follow-Up",
               "Appointment Scheduled",
@@ -414,7 +447,7 @@ export default function Leads() {
 
           {role === "admin" && (
             <select
-              className="border rounded-md h-8 text-sm bg-white/90 md:max-w-32"
+              className="w-full sm:w-40 border rounded-md h-9 text-sm bg-white/90 px-2"
               value={filters.assigned_to}
               onChange={(e) =>
                 setFilters({ ...filters, assigned_to: e.target.value })
@@ -430,30 +463,56 @@ export default function Leads() {
           )}
         </div>
 
-        <div className="flex gap-2">
-          {role === "admin" && selectedLeads.length > 0 && (
-            <>
-              <Button variant="destructive" onClick={bulkDelete}>
-                <MdDelete /> Delete ({selectedLeads.length})
-              </Button>
+        {/* BOTTOM: Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          {/* LEFT: Bulk actions */}
+          <div className="flex flex-wrap gap-2">
+            {role === "admin" && selectedLeads.length > 0 && (
+              <>
+                <Button
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onClick={bulkDelete}
+                >
+                  <MdDelete /> Delete ({selectedLeads.length})
+                </Button>
 
-              <Button onClick={() => setAssignOpen(true)}>
-                <MdAssignmentInd />Assign ({selectedLeads.length})
-              </Button>
-            </>
-          )}
-          {role === "admin" && (
-            <>
-              <Button variant="outline" onClick={() => setExportOpen(true)}>
-                Export <FaFileExport />
-              </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                Import <FaFileImport />
-              </Button>
-            </>
-          )}
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <MdAssignmentInd /> Assign ({selectedLeads.length})
+                </Button>
+              </>
+            )}
+          </div>
 
-          <Button onClick={() => openModal()}>+ Lead</Button>
+          {/* RIGHT: Import/Export/Add */}
+          <div className="flex flex-wrap gap-2">
+            {role === "admin" && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setExportOpen(true)}
+                >
+                  Export <FaFileExport />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setImportOpen(true)}
+                >
+                  Import <FaFileImport />
+                </Button>
+              </>
+            )}
+
+            <Button className="w-full sm:w-auto" onClick={() => openModal()}>
+              + Lead
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -462,32 +521,28 @@ export default function Leads() {
       ) : (
         <>
           {/* TABLE */}
-          <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  {role === "admin" && (
-                    <th className="p-3 text-center">Select</th>
-                  )}
-                  <th className="p-3 text-left">Company</th>
-                  <th className="p-3 text-left">Contact</th>
-                  <th className="p-3 text-left">Phone</th>
-                  <th className="p-3 text-left">Source</th>
-                  <th className="p-3 text-left">Status</th>
-                  {role === "admin" && (
-                    <th className="p-3 text-left">Assigned</th>
-                  )}
+          <div className=" ">
+            {/* ================= DESKTOP ================= */}
+            <div className="hidden border rounded-lg md:block overflow-x-auto">
+              <table className="w-full text-sm min-w-[900px]">
+                <thead className="bg-muted">
+                  <tr>
+                    {role === "admin" && <th className="p-3 text-center"></th>}
+                    <th className="p-3 text-left">Company</th>
+                    <th className="p-3 text-left">Person</th>
+                    <th className="p-3 text-left">Phone</th>
+                    <th className="p-3 text-left">Email</th>
+                    {/* <th className="p-3 text-left">Source</th> */}
+                    <th className="p-3 text-left">Status</th>
+                    {role === "admin" && (
+                      <th className="p-3 text-left">Assigned</th>
+                    )}
+                    <th className="p-3 text-center">Action</th>
+                  </tr>
+                </thead>
 
-                  <th className="p-3 text-center">Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {leads.map((lead) => {
-                  // const latestStatus =
-                  //   lead.status_history?.[lead.status_history.length - 1];
-
-                  return (
+                <tbody>
+                  {leads.map((lead) => (
                     <tr
                       key={lead.lead_id}
                       className="border-t hover:bg-muted/50 cursor-pointer"
@@ -516,18 +571,28 @@ export default function Leads() {
                           />
                         </td>
                       )}
+
                       <td className="p-3">{lead.company_name}</td>
                       <td className="p-3">{lead.contact_person}</td>
+
                       <td className="p-3">
                         <a
                           href={`tel:${lead.phone_number}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {lead.phone_number}
                         </a>
                       </td>
-                      <td className="p-3">{lead.source}</td>
+                      <td className="p-3">
+                        <a
+                          href={`mailto:${lead.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {lead.email}
+                        </a>
+                      </td>
+
+                      {/* <td className="p-3">{lead.source}</td> */}
 
                       <td className="p-3">
                         {lead.latest_status && (
@@ -540,38 +605,42 @@ export default function Leads() {
                           </Badge>
                         )}
                       </td>
+
                       {role === "admin" && (
                         <td className="p-3">{lead.sales_person?.name}</td>
                       )}
 
-                      <td className="p-3 space-x-2 text-center">
+                      {/* ✅ ACTIONS RESTORED */}
+                      <td
+                        className="p-3 space-x-2 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `tel:${lead.phone_number}`;
-                          }}
-                          className={"bg-blue-500 hover:bg-blue-500/90"}
+                          onClick={() =>
+                            (window.location.href = `tel:${lead.phone_number}`)
+                          }
+                          className="bg-blue-500 hover:bg-blue-500/90"
                         >
                           <PhoneIcon />
                         </Button>
+
                         <Button
                           size="sm"
                           className="bg-green-500 hover:bg-green-600 text-white"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() =>
                             window.open(
                               `https://wa.me/${lead.phone_number}`,
                               "_blank",
-                            );
-                          }}
+                            )
+                          }
                         >
                           <FaWhatsapp size={16} />
                         </Button>
+
                         <Button
                           size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             setSelectedLeadId(lead.lead_id);
                             setStatusOpen(true);
                           }}
@@ -584,21 +653,16 @@ export default function Leads() {
                             <Button
                               size="sm"
                               variant="secondary"
-                              className={"bg-amber-100 hover:bg-amber-200"}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openModal(lead);
-                              }}
+                              className="bg-amber-100 hover:bg-amber-200"
+                              onClick={() => openModal(lead)}
                             >
-                              <FaRegEdit className="text-secondary-foreground " />
+                              <FaRegEdit />
                             </Button>
+
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteLead(lead.lead_id);
-                              }}
+                              onClick={() => deleteLead(lead.lead_id)}
                             >
                               <MdDelete />
                             </Button>
@@ -606,27 +670,209 @@ export default function Leads() {
                         )}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          {/* PAGINATION */}
-          <div className="flex justify-center gap-2 mt-4 flex-wrap">
-            {[...Array(lastPage)].map((_, i) => (
-              <Button
-                key={i}
-                variant={page === i + 1 ? "default" : "outline"}
-                onClick={() => setPage(i + 1)}
-              >
-                {i + 1}
-              </Button>
-            ))}
+            {/* ================= MOBILE ================= */}
+            <div className="md:hidden flex flex-col gap-3 ">
+              {leads.map((lead) => (
+                <div
+                  key={lead.lead_id}
+                  className="border rounded-lg p-3 shadow-sm bg-white"
+                  onClick={() => navigate(`/leads/${lead.lead_id}`)}
+                >
+                  {/* TOP ROW */}
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-center gap-2">
+                      {role === "admin" && (
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.includes(lead.lead_id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLeads([
+                                ...selectedLeads,
+                                lead.lead_id,
+                              ]);
+                            } else {
+                              setSelectedLeads(
+                                selectedLeads.filter(
+                                  (id) => id !== lead.lead_id,
+                                ),
+                              );
+                            }
+                          }}
+                        />
+                      )}
+
+                      <h3 className="font-semibold text-sm">
+                        {lead?.company_name}
+                      </h3>
+                    </div>
+
+                    {lead.latest_status && (
+                      <Badge
+                        className={getStatusColor(
+                          lead.latest_status?.status_type,
+                        )}
+                      >
+                        {lead.latest_status?.status_type}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* INFO */}
+                  <div className="text-xs mt-2 space-y-1 text-muted-foreground">
+                    <p>
+                      <b>Person:</b> {lead?.contact_person}
+                    </p>
+
+                    <p>
+                      <b>Phone:</b>{" "}
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `tel:${lead?.phone_number}`;
+                        }}
+                        className="text-blue-500"
+                      >
+                        {lead?.phone_number}
+                      </span>
+                    </p>
+                    <p>
+                      <b>Email:</b>{" "}
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `mailto:${lead?.email}`;
+                        }}
+                        className="text-blue-500"
+                      >
+                        {lead?.email}
+                      </span>
+                    </p>
+
+                    <p>
+                      <b>Source:</b> {lead?.source}
+                    </p>
+
+                    {role === "admin" && (
+                      <p>
+                        <b>Assigned:</b> {lead?.sales_person?.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ACTIONS */}
+                  <div
+                    className="flex flex-wrap gap-2 mt-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-blue-500"
+                      onClick={() =>
+                        (window.location.href = `tel:${lead?.phone_number}`)
+                      }
+                    >
+                      <PhoneIcon />
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-green-500 text-white"
+                      onClick={() =>
+                        window.open(
+                          `https://wa.me/${lead?.phone_number}`,
+                          "_blank",
+                        )
+                      }
+                    >
+                      <FaWhatsapp />
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setSelectedLeadId(lead.lead_id);
+                        setStatusOpen(true);
+                      }}
+                    >
+                      + Status
+                    </Button>
+
+                    {role === "admin" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="flex-1"
+                          onClick={() => openModal(lead)}
+                        >
+                          <FaRegEdit />
+                          Edit
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="flex-1"
+                          onClick={() => deleteLead(lead.lead_id)}
+                        >
+                          <MdDelete />
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
 
+      {/* PAGINATION */}
+      <div className="flex justify-center gap-2 mt-4 flex-wrap">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={page === 1}
+          onClick={() => setPage(page - 1)}
+        >
+          Prev
+        </Button>
+        {getPagination(page, lastPage).map((p, i) =>
+          p === "..." ? (
+            <span key={i} className="px-2 py-1 text-sm">
+              ...
+            </span>
+          ) : (
+            <Button
+              key={i}
+              size="sm"
+              variant={page === p ? "default" : "outline"}
+              onClick={() => setPage(p)}
+              className="min-w-[36px]"
+            >
+              {p}
+            </Button>
+          ),
+        )}
+        {/* NEXT */}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={page === lastPage}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
       {/* ADD/EDIT MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">

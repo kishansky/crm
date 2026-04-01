@@ -140,6 +140,7 @@ export default function Performance() {
     <DashboardLayout>
 
       {/* HEADER */}
+      {/* HEADER */}
       <div className="flex justify-between mb-6">
         <h1 className="text-xl font-semibold">Performance</h1>
 
@@ -148,67 +149,113 @@ export default function Performance() {
         </Button>
       </div>
 
-      {/* TABLE */}
-      <div className="border rounded-lg overflow-x-auto">
 
-        <Table>
+      {!loading ? (
+  <>
+    {/* ================= DESKTOP ================= */}
+    <div className="hidden md:block border rounded-lg overflow-x-auto">
+      <Table className="min-w-[800px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Sales</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Leads</TableHead>
+            <TableHead>Calls</TableHead>
+            <TableHead>Closed</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Action</TableHead>
+          </TableRow>
+        </TableHeader>
 
-          <TableHeader>
-            <TableRow>
-              <TableHead>Sales</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Leads</TableHead>
-              <TableHead>Calls</TableHead>
-              <TableHead>Closed</TableHead>
-              <TableHead>Status</TableHead> {/* ✅ NEW */}
-              <TableHead>Action</TableHead>
+        <TableBody>
+          {data.map((item) => (
+            <TableRow key={item.perf_id}>
+              <TableCell>{item.sales_person?.name}</TableCell>
+              <TableCell>{item.report_date}</TableCell>
+              <TableCell>{item.total_leads}</TableCell>
+              <TableCell>{item.total_calls}</TableCell>
+              <TableCell>{item.closed_ordered}</TableCell>
+
+              <TableCell>
+                {getPerformanceBadge(item)}
+              </TableCell>
+
+              <TableCell className="space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openModal(item)}
+                >
+                  <MdEdit /> Edit
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => deleteItem(item.perf_id)}
+                >
+                  <MdDelete /> Delete
+                </Button>
+              </TableCell>
             </TableRow>
-          </TableHeader>
+          ))}
+        </TableBody>
+      </Table>
+          </div>
+          
+              {/* ================= MOBILE ================= */}
+    <div className="md:hidden flex flex-col gap-3">
 
-          <TableBody>
+      {data.map((item) => (
+        <div
+          key={item.perf_id}
+          className="border rounded-lg p-3 bg-white shadow-sm"
+        >
+          {/* TOP */}
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-sm">
+              {item.sales_person?.name}
+            </h3>
 
-            {data.map((item) => (
-              <TableRow key={item.perf_id}>
+            {getPerformanceBadge(item)}
+          </div>
 
-                <TableCell>{item.sales_person?.name}</TableCell>
-                <TableCell>{item.report_date}</TableCell>
-                <TableCell>{item.total_leads}</TableCell>
-                <TableCell>{item.total_calls}</TableCell>
-                <TableCell>{item.closed_ordered}</TableCell>
+          {/* INFO */}
+          <div className="text-xs text-muted-foreground mt-2 space-y-1">
+            <p><b>Date:</b> {item.report_date}</p>
+            <p><b>Leads:</b> {item.total_leads}</p>
+            <p><b>Calls:</b> {item.total_calls}</p>
+            <p><b>Closed:</b> {item.closed_ordered}</p>
+          </div>
 
-                {/* ✅ BADGE */}
-                <TableCell>
-                  {getPerformanceBadge(item)}
-                </TableCell>
+          {/* ACTIONS */}
+          <div className="flex gap-2 mt-3">
+            <Button
+              size="sm"
+              className="flex-1"
+              variant="outline"
+              onClick={() => openModal(item)}
+            >
+              Edit
+            </Button>
 
-                <TableCell className="space-x-2">
+            <Button
+              size="sm"
+              className="flex-1"
+              variant="destructive"
+              onClick={() => deleteItem(item.perf_id)}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      ))}
 
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openModal(item)}
-                  >
-                   <MdEdit /> Edit
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => deleteItem(item.perf_id)}
-                  >
-                   <MdDelete /> Delete
-                  </Button>
-
-                </TableCell>
-
-              </TableRow>
-            ))}
-
-          </TableBody>
-
-        </Table>
-
-      </div>
+    </div>
+  </>
+) : (
+  <Loader type="table" />
+)}
 
       {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>

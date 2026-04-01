@@ -128,10 +128,40 @@ export default function SalesTeam() {
     }
   };
 
+  const getPagination = (current, total) => {
+    const delta = 1;
+    const range = [];
+    const result = [];
+
+    for (let i = 1; i <= total; i++) {
+      if (
+        i === 1 ||
+        i === total ||
+        (i >= current - delta && i <= current + delta)
+      ) {
+        range.push(i);
+      }
+    }
+
+    let prev;
+    for (let i of range) {
+      if (prev) {
+        if (i - prev === 2) {
+          result.push(prev + 1);
+        } else if (i - prev > 2) {
+          result.push("...");
+        }
+      }
+      result.push(i);
+      prev = i;
+    }
+
+    return result;
+  };
   // if (loading) {
   //   return (
   //     <DashboardLayout>
-        
+
   //       <Loader type="table" />
   //     </DashboardLayout>
   //   );
@@ -140,57 +170,109 @@ export default function SalesTeam() {
   return (
     <DashboardLayout>
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
-          {/* <h1 className="text-xl md:text-2xl font-semibold">Sales Team</h1> */}
-          <div className="flex flex-col md:flex-row gap-3 md:justify-between mb-6">
-            <div className="flex gap-3 flex-wrap">
-              <Input
-                placeholder="Search..."
-                className="w-full md:w-52 bg-white/90"
-                value={filters.search}
-                onChange={(e) =>
-                  setFilters({ ...filters, search: e.target.value })
-                }
-              />
+      <div className="flex flex-col gap-4 mb-6">
+        {/* TOP */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* FILTERS */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Input
+              placeholder="Search..."
+              className="w-full sm:w-52 bg-white/90"
+              value={filters.search}
+              onChange={(e) =>
+                setFilters({ ...filters, search: e.target.value })
+              }
+            />
 
-              <select
-                className="border rounded-md h-8 text-sm bg-white/90"
-                value={filters.is_active}
-                onChange={(e) =>
-                  setFilters({ ...filters, is_active: e.target.value })
-                }
-              >
-                <option value="">All Status</option>
-                <option value="1">Active</option>
-                <option value="0">Inactive</option>
-              </select>
-            </div>
-
+            <select
+              className="w-full sm:w-40 border rounded-md h-9 text-sm bg-white/90 px-2"
+              value={filters.is_active}
+              onChange={(e) =>
+                setFilters({ ...filters, is_active: e.target.value })
+              }
+            >
+              <option value="">All Status</option>
+              <option value="1">Active</option>
+              <option value="0">Inactive</option>
+            </select>
           </div>
-          <Button onClick={() => openModal()}>+ Add Member</Button>
+
+          {/* ACTION */}
+          <Button className="w-full sm:w-auto" onClick={() => openModal()}>
+            + Add Member
+          </Button>
+        </div>
       </div>
-      
-      {
-        !loading ? (<>
-        {/* TABLE */}
-      <div className="border rounded-lg overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-center">Action</TableHead>
-            </TableRow>
-          </TableHeader>
 
-          <TableBody>
+      {!loading ? (
+        <>
+          {/* DESKTOP TABLE */}
+          <div className="hidden md:block border rounded-lg overflow-x-auto">
+            <Table className="min-w-[600px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {team.map((user) => (
+                  <TableRow key={user.sales_person_id}>
+                    <TableCell>{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+
+                    <TableCell>
+                      {user.is_active ? (
+                        <Badge className="bg-green-100 text-green-700">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-700">
+                          Inactive
+                        </Badge>
+                      )}
+                    </TableCell>
+
+                    <TableCell className="text-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openModal(user)}
+                      >
+                        <MdEdit /> Edit
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteUser(user.sales_person_id)}
+                      >
+                        <MdDelete /> Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* MOBILE CARDS */}
+          <div className="md:hidden flex flex-col gap-3">
             {team.map((user) => (
-              <TableRow key={user.sales_person_id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
+              <div
+                key={user.sales_person_id}
+                className="border rounded-lg p-3 bg-white shadow-sm"
+              >
+                <h3 className="font-semibold text-sm">{user.name}</h3>
 
-                <TableCell>
+                <p className="text-xs text-muted-foreground break-words">
+                  {user.email}
+                </p>
+
+                <div className="mt-2">
                   {user.is_active ? (
                     <Badge className="bg-green-100 text-green-700">
                       Active
@@ -198,46 +280,74 @@ export default function SalesTeam() {
                   ) : (
                     <Badge className="bg-red-100 text-red-700">Inactive</Badge>
                   )}
-                </TableCell>
+                </div>
 
-                <TableCell className="text-center space-x-2">
+                <div className="flex gap-2 mt-3">
                   <Button
                     size="sm"
+                    className="flex-1"
                     variant="outline"
                     onClick={() => openModal(user)}
                   >
-                   <MdEdit /> Edit
+                    Edit
                   </Button>
 
                   <Button
                     size="sm"
+                    className="flex-1"
                     variant="destructive"
                     onClick={() => deleteUser(user.sales_person_id)}
                   >
-                    <MdDelete /> Delete
+                    Delete
                   </Button>
-                </TableCell>
-              </TableRow>
+                </div>
+              </div>
             ))}
-          </TableBody>
-        </Table>
-        
-      </div>
-      <div className="flex justify-center gap-2 mt-4 flex-wrap">
-          {[...Array(lastPage)].map((_, i) => (
-            <Button
-              key={i}
-              variant={page === i + 1 ? "default" : "outline"}
-              onClick={() => setPage(i + 1)}
-            >
-              {i + 1}
-            </Button>
-          ))}
           </div>
-        </>) : <Loader type="table" />
-      }
+          <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
+            {/* PREV */}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Prev
+            </Button>
 
-      
+            {/* PAGES */}
+            {getPagination(page, lastPage).map((p, i) =>
+              p === "..." ? (
+                <span key={i} className="px-2 text-sm">
+                  ...
+                </span>
+              ) : (
+                <Button
+                  key={i}
+                  size="sm"
+                  variant={page === p ? "default" : "outline"}
+                  onClick={() => setPage(p)}
+                  className="min-w-[36px]"
+                >
+                  {p}
+                </Button>
+              ),
+            )}
+
+            {/* NEXT */}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === lastPage}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Loader type="table" />
+      )}
 
       {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
