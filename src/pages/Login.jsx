@@ -89,7 +89,7 @@ export default function Login() {
         </CardContent>
 
       </Card>
-      <Company />
+      {/* <Company /> */}
             </div>
     </div>
   );

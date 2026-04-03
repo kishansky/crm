@@ -190,7 +190,7 @@ export default function Leads() {
   });
 
   const EXPORT_COLUMNS = [
-    "company",
+    // "company",
     "contact_person",
     "phone",
     "email",
@@ -312,17 +312,18 @@ export default function Leads() {
     }
   };
 
-  const exportExcel = async () => {
+  const exportFile = async (format) => {
     try {
       const res = await api.post(
-        "/leads-export-excel",
+        "/leads-export", // ✅ single API
         {
           columns: selectedColumns,
-          lead_ids: selectedLeads, // optional
+          lead_ids: selectedLeads,
           assigned_to: exportFilters.assigned_to,
           start_date: exportFilters.start_date,
           end_date: exportFilters.end_date,
           limit: exportFilters.limit,
+          format: format, // ✅ important
         },
         { responseType: "blob" },
       );
@@ -333,11 +334,21 @@ export default function Leads() {
       const link = document.createElement("a");
 
       link.href = url;
-      link.setAttribute("download", "leads.xlsx");
+      link.setAttribute(
+        "download",
+        format === "csv" ? "leads.csv" : "leads.xlsx",
+      );
+
       document.body.appendChild(link);
       link.click();
 
-      toast.success(`Exported ${total} records 🚀`);
+      const totalcount =
+        res.headers["x-total-count"] || res.headers["X-Total-Count"];
+
+      const exported =
+        res.headers["x-exported-count"] || res.headers["X-Exported-Count"];
+
+      toast.success(`Exported ${exported}/${totalcount} records 🚀`);
 
       setExportOpen(false);
     } catch {
@@ -528,7 +539,7 @@ export default function Leads() {
                 <thead className="bg-muted">
                   <tr>
                     {role === "admin" && <th className="p-3 text-center"></th>}
-                    <th className="p-3 text-left">Company</th>
+                    {/* <th className="p-3 text-left">Company</th> */}
                     <th className="p-3 text-left">Person</th>
                     <th className="p-3 text-left">Phone</th>
                     <th className="p-3 text-left">Email</th>
@@ -572,7 +583,7 @@ export default function Leads() {
                         </td>
                       )}
 
-                      <td className="p-3">{lead.company_name}</td>
+                      {/* <td className="p-3">{lead.company_name}</td> */}
                       <td className="p-3">{lead.contact_person}</td>
 
                       <td className="p-3">
@@ -647,18 +658,17 @@ export default function Leads() {
                         >
                           <MdAdd /> Status
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="bg-amber-100 hover:bg-amber-200"
+                          onClick={() => openModal(lead)}
+                        >
+                          <FaRegEdit />
+                        </Button>
 
                         {role === "admin" && (
                           <>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="bg-amber-100 hover:bg-amber-200"
-                              onClick={() => openModal(lead)}
-                            >
-                              <FaRegEdit />
-                            </Button>
-
                             <Button
                               size="sm"
                               variant="destructive"
@@ -709,7 +719,7 @@ export default function Leads() {
                       )}
 
                       <h3 className="font-semibold text-sm">
-                        {lead?.company_name}
+                         {lead?.contact_person}
                       </h3>
                     </div>
 
@@ -726,9 +736,9 @@ export default function Leads() {
 
                   {/* INFO */}
                   <div className="text-xs mt-2 space-y-1 text-muted-foreground">
-                    <p>
+                    {/* <p>
                       <b>Person:</b> {lead?.contact_person}
-                    </p>
+                    </p> */}
 
                     <p>
                       <b>Phone:</b>{" "}
@@ -1020,7 +1030,7 @@ export default function Leads() {
             {/* FILE */}
             <input
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx,.xls,.csv"
               onChange={(e) => setImportFile(e.target.files[0])}
               className="border rounded p-2 w-full"
             />
@@ -1157,9 +1167,19 @@ export default function Leads() {
                 })
               }
             />
-            <Button onClick={exportExcel} className="w-full mt-3">
-              Download Excel
-            </Button>
+            <div className="flex gap-2 mt-3">
+              <Button onClick={() => exportFile("xlsx")} className="">
+                Download Excel (.xlsx)
+              </Button>
+
+              <Button
+                onClick={() => exportFile("csv")}
+                variant="outline"
+                className=""
+              >
+                Download CSV (.csv)
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
