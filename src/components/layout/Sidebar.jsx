@@ -12,13 +12,19 @@ export default function Sidebar({ open, setOpen }) {
   const adminMenu = [
     { name: "Dashboard", path: "/dashboard" },
     { name: "Leads", path: "/leads", match: ["/leads", "/lead"] },
+    { name: "Follow-Up", path: "/follow-up" },
     { name: "Sales Team", path: "/sales-team" },
     { name: "Performance", path: "/performance" },
+    { name: "Status", path: "/status" },
+    { name: "Change Password", path: "/change-password" },
+    { name: "Form-Links", path: "/links" },
+
   ];
 
   const salesMenu = [
     { name: "Dashboard", path: "/dashboard" },
     { name: "Leads", path: "/leads", match: ["/leads", "/lead"] },
+    { name: "Follow-Up", path: "/follow-up" },
   ];
 
   const menu = role === "admin" ? adminMenu : salesMenu;

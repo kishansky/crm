@@ -25,6 +25,8 @@ export default function Dashboard() {
     performance: 0,
   });
 
+  const [statuses, setStatuses] = useState([]);
+
   const [stats1, setStats1] = useState({
     total_leads: 0,
     today_leads: 0,
@@ -45,6 +47,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboard();
+    fetchStatuses();
   }, []);
 
   const fetchDashboard = async () => {
@@ -84,7 +87,6 @@ export default function Dashboard() {
 
       // ✅ Recent Leads
       setRecentLeads(leadsData.slice(0, 5));
-      console.log(salesRes, 999);
 
       // ✅ Chart
       if (role === "admin") {
@@ -104,46 +106,12 @@ export default function Dashboard() {
     }
   };
 
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Follow-Up":
-        return "bg-yellow-100 text-yellow-700";
-
-      case "Appointment Scheduled":
-        return "bg-blue-100 text-blue-700";
-
-      case "Interested":
-        return "bg-green-100 text-green-700";
-
-      case "Quotation Sent":
-        return "bg-indigo-100 text-indigo-700";
-
-      case "Negotiation":
-        return "bg-purple-100 text-purple-700";
-
-      case "Closed-Ordered":
-        return "bg-green-200 text-green-800";
-
-      case "Closed-Lost":
-        return "bg-red-100 text-red-700";
-
-      case "Not Interested":
-        return "bg-gray-200 text-gray-700";
-
-      case "On Hold":
-        return "bg-orange-100 text-orange-700";
-
-      case "Callback Requested":
-        return "bg-cyan-100 text-cyan-700";
-
-      case "Unreachable":
-        return "bg-slate-200 text-slate-700";
-
-      default:
-        return "bg-gray-100 text-gray-600";
-    }
+  const fetchStatuses = async () => {
+    const res = await api.get("/statuses");
+    setStatuses(res.data);
   };
+
+  const statusMap = Object.fromEntries(statuses.map((s) => [s.id, s]));
 
   if (loading) {
     return (
@@ -198,16 +166,20 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <div className="flex gap-3">
-                    {lead.latest_status && (
-                      <Badge
-                        className={getStatusColor(
-                          lead.latest_status?.status_type,
-                        )}
-                      >
-                        {lead.latest_status?.status_type}
-                      </Badge>
-                    )}
-                    {lead.source && <Badge>{lead.source}</Badge>}
+                    {lead.latest_status &&
+                      (() => {
+                        const status = statusMap[lead.latest_status.status_id];
+                        return (
+                          <Badge
+                            style={{
+                              color: status?.color,
+                              backgroundColor: status?.color + "33",
+                            }}
+                          >
+                            {status?.name}
+                          </Badge>
+                        );
+                      })()}
                   </div>
                 </div>
               ))

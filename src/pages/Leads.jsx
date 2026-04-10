@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +29,7 @@ import { MdAdd, MdAssignmentInd, MdDelete, MdEdit } from "react-icons/md";
 export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [sales, setSales] = useState([]);
+  const [statuses, setStatuses] = useState([]);
 
   const [filters, setFilters] = useState({
     search: "",
@@ -74,6 +75,7 @@ export default function Leads() {
     if (role === "admin") {
       fetchSales();
     }
+    fetchStatuses();
   }, []);
   useEffect(() => {
     fetchLeads(page);
@@ -127,6 +129,11 @@ export default function Leads() {
   const fetchSales = async () => {
     const res = await api.get("/sales-team");
     setSales(res.data.data);
+  };
+
+  const fetchStatuses = async () => {
+    const res = await api.get("/statuses");
+    setStatuses(res.data);
   };
 
   const openModal = (lead = null) => {
@@ -185,8 +192,11 @@ export default function Leads() {
   // ✅ STATUS MODAL
   const [statusOpen, setStatusOpen] = useState(false);
   const [statusForm, setStatusForm] = useState({
+    status_id: "",
     status_type: "",
     remark: "",
+    reschedule_time: "",
+    shift: "",
   });
 
   const EXPORT_COLUMNS = [
@@ -198,63 +208,46 @@ export default function Leads() {
     "latest_status",
   ];
 
+  const selectAllRef = useRef(null);
+
+  useEffect(() => {
+    if (!selectAllRef.current) return;
+
+    const currentIds = leads.map((l) => l.lead_id);
+    const selectedOnPage = currentIds.filter((id) =>
+      selectedLeads.includes(id),
+    );
+
+    selectAllRef.current.indeterminate =
+      selectedOnPage.length > 0 && selectedOnPage.length < currentIds.length;
+  }, [selectedLeads, leads]);
+
   // ✅ ADD STATUS
   const addStatus = async () => {
     try {
       await api.post("/status-history", {
         lead_id: selectedLeadId,
-        status_type: statusForm.status_type,
+        status_id: statusForm.status_id, // ✅ backend
+        status_type: statusForm.status_type, // ✅ optional (keep if needed)
         remark: statusForm.remark,
+        reschedule_time: statusForm.reschedule_time,
+        shift: statusForm.shift,
       });
 
       toast.success("Status added ✅");
 
       setStatusOpen(false);
-      setStatusForm({ status_type: "", remark: "" });
+      setStatusForm({
+        status_id: "",
+        status_type: "",
+        remark: "",
+        reschedule_time: "",
+        shift: "",
+      });
 
       fetchLeads();
     } catch (err) {
       toast.error(err?.response?.data?.message || "Error adding status");
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Follow-Up":
-        return "bg-yellow-100 text-yellow-700";
-
-      case "Appointment Scheduled":
-        return "bg-blue-100 text-blue-700";
-
-      case "Interested":
-        return "bg-green-100 text-green-700";
-
-      case "Quotation Sent":
-        return "bg-indigo-100 text-indigo-700";
-
-      case "Negotiation":
-        return "bg-purple-100 text-purple-700";
-
-      case "Closed-Ordered":
-        return "bg-green-200 text-green-800";
-
-      case "Closed-Lost":
-        return "bg-red-100 text-red-700";
-
-      case "Not Interested":
-        return "bg-gray-200 text-gray-700";
-
-      case "On Hold":
-        return "bg-orange-100 text-orange-700";
-
-      case "Callback Requested":
-        return "bg-cyan-100 text-cyan-700";
-
-      case "Unreachable":
-        return "bg-slate-200 text-slate-700";
-
-      default:
-        return "bg-gray-100 text-gray-600";
     }
   };
 
@@ -408,6 +401,8 @@ export default function Leads() {
     return rangeWithDots;
   };
 
+  const statusMap = Object.fromEntries(statuses.map((s) => [s.id, s]));
+
   return (
     <DashboardLayout>
       {/* HEADER */}
@@ -416,7 +411,7 @@ export default function Leads() {
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
           <Input
             placeholder="Search..."
-            className="w-full sm:w-48 bg-white/90 h-9"
+            className="w-full sm:w-48 bg-white/90 h-9 mt-0"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
           />
@@ -428,7 +423,11 @@ export default function Leads() {
           >
             <option value="">All Sources</option>
             <option value="website">Website</option>
-            <option value="Ads">Ads</option>
+            <option value="facebook">Facebook</option>
+            <option value="whatsapp">Whatsapp</option>
+            <option value="instragram">Instragram</option>
+            <option value="linkedin">Linkedin</option>
+            <option value="google">Google</option>
           </select>
 
           <select
@@ -437,21 +436,9 @@ export default function Leads() {
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           >
             <option value="">All Status</option>
-            {[
-              "Follow-Up",
-              "Appointment Scheduled",
-              "Not Interested",
-              "Interested",
-              "Quotation Sent",
-              "Negotiation",
-              "Closed-Ordered",
-              "Closed-Lost",
-              "On Hold",
-              "Callback Requested",
-              "Unreachable",
-            ].map((s) => (
-              <option key={s} value={s}>
-                {s}
+            {statuses.map((s) => (
+              <option key={s?.id} value={s?.name}>
+                {s?.name}
               </option>
             ))}
           </select>
@@ -538,15 +525,47 @@ export default function Leads() {
               <table className="w-full text-sm min-w-[900px]">
                 <thead className="bg-muted">
                   <tr>
-                    {role === "admin" && <th className="p-3 text-center"></th>}
+                    {role === "admin" && (
+                      <th className="p-3 text-center flex flex-row">
+                        <input
+                          type="checkbox"
+                          ref={selectAllRef}
+                          className="scale-125"
+                          checked={
+                            leads.length > 0 &&
+                            leads.every((lead) =>
+                              selectedLeads.includes(lead.lead_id),
+                            )
+                          }
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              // select all current page rows
+                              const allIds = leads.map((lead) => lead.lead_id);
+                              setSelectedLeads((prev) => [
+                                ...new Set([...prev, ...allIds]),
+                              ]);
+                            } else {
+                              // unselect only current page rows
+                              const currentIds = leads.map(
+                                (lead) => lead.lead_id,
+                              );
+                              setSelectedLeads((prev) =>
+                                prev.filter((id) => !currentIds.includes(id)),
+                              );
+                            }
+                          }}
+                        />{" "}
+                        <p className="pl-2">All</p>
+                      </th>
+                    )}
                     {/* <th className="p-3 text-left">Company</th> */}
                     <th className="p-3 text-left">Person</th>
                     <th className="p-3 text-left">Phone</th>
                     <th className="p-3 text-left">Email</th>
-                    {/* <th className="p-3 text-left">Source</th> */}
                     <th className="p-3 text-left">Status</th>
-                    {role === "admin" && (
-                      <th className="p-3 text-left">Assigned</th>
+                      {
+                        role === "admin" && (<><th className="p-3 text-left">Source</th>
+                      <th className="p-3 text-left">Assigned</th></>
                     )}
                     <th className="p-3 text-center">Action</th>
                   </tr>
@@ -560,9 +579,13 @@ export default function Leads() {
                       onClick={() => navigate(`/leads/${lead.lead_id}`)}
                     >
                       {role === "admin" && (
-                        <td className="p-3 text-center">
+                        <td
+                          className="p-3 text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
+                            className="scale-125"
                             checked={selectedLeads.includes(lead.lead_id)}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => {
@@ -606,19 +629,32 @@ export default function Leads() {
                       {/* <td className="p-3">{lead.source}</td> */}
 
                       <td className="p-3">
-                        {lead.latest_status && (
-                          <Badge
-                            className={getStatusColor(
-                              lead.latest_status?.status_type,
-                            )}
-                          >
-                            {lead.latest_status?.status_type}
-                          </Badge>
-                        )}
+                        {lead.latest_status &&
+                          (() => {
+                            const status =
+                              statusMap[lead.latest_status.status_id];
+
+                            return (
+                              <Badge
+                                style={{
+                                  color: status?.color,
+                                  backgroundColor: status?.color + "33",
+                                }}
+                              >
+                                {status?.name}
+                              </Badge>
+                            );
+                          })()}
                       </td>
 
-                      {role === "admin" && (
+                      {role === "admin" && (<>
+                        <td className="p-3">
+                          {
+                            lead.source && (<Badge >{lead.source}</Badge>)
+                          }
+                        </td>
                         <td className="p-3">{lead.sales_person?.name}</td>
+                      </>
                       )}
 
                       {/* ✅ ACTIONS RESTORED */}
@@ -687,6 +723,35 @@ export default function Leads() {
 
             {/* ================= MOBILE ================= */}
             <div className="md:hidden flex flex-col gap-3 ">
+              {role === "admin" && (
+                <div className="flex items-center gap-2 px-2">
+                  <input
+                    type="checkbox"
+                    ref={selectAllRef}
+                    className="scale-125"
+                    checked={
+                      leads.length > 0 &&
+                      leads.every((lead) =>
+                        selectedLeads.includes(lead.lead_id),
+                      )
+                    }
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const allIds = leads.map((lead) => lead.lead_id);
+                        setSelectedLeads((prev) => [
+                          ...new Set([...prev, ...allIds]),
+                        ]);
+                      } else {
+                        const currentIds = leads.map((lead) => lead.lead_id);
+                        setSelectedLeads((prev) =>
+                          prev.filter((id) => !currentIds.includes(id)),
+                        );
+                      }
+                    }}
+                  />
+                  <span className="text-sm font-medium">Select All</span>
+                </div>
+              )}
               {leads.map((lead) => (
                 <div
                   key={lead.lead_id}
@@ -699,6 +764,7 @@ export default function Leads() {
                       {role === "admin" && (
                         <input
                           type="checkbox"
+                          className="scale-125"
                           checked={selectedLeads.includes(lead.lead_id)}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => {
@@ -719,19 +785,25 @@ export default function Leads() {
                       )}
 
                       <h3 className="font-semibold text-sm">
-                         {lead?.contact_person}
+                        {lead?.contact_person}
                       </h3>
                     </div>
 
-                    {lead.latest_status && (
-                      <Badge
-                        className={getStatusColor(
-                          lead.latest_status?.status_type,
-                        )}
-                      >
-                        {lead.latest_status?.status_type}
-                      </Badge>
-                    )}
+                    {lead.latest_status &&
+                      (() => {
+                        const status = statusMap[lead.latest_status.status_id];
+
+                        return (
+                          <Badge
+                            style={{
+                              color: status?.color,
+                              backgroundColor: status?.color + "33",
+                            }}
+                          >
+                            {status?.name}
+                          </Badge>
+                        );
+                      })()}
                   </div>
 
                   {/* INFO */}
@@ -765,14 +837,16 @@ export default function Leads() {
                       </span>
                     </p>
 
-                    <p>
-                      <b>Source:</b> {lead?.source}
-                    </p>
-
                     {role === "admin" && (
-                      <p>
-                        <b>Assigned:</b> {lead?.sales_person?.name}
-                      </p>
+                      <>
+                        <p>
+                          <b>Source:</b> {lead?.source}
+                        </p>
+
+                        <p>
+                          <b>Assigned:</b> {lead?.sales_person?.name}
+                        </p>
+                      </>
                     )}
                   </div>
 
@@ -910,6 +984,7 @@ export default function Leads() {
             <Input
               placeholder="Phone"
               value={form.phone_number || ""}
+              disabled={role !== "admin" && editing}
               onChange={(e) =>
                 setForm({ ...form, phone_number: e.target.value })
               }
@@ -972,50 +1047,82 @@ export default function Leads() {
             <DialogTitle>Add Status</DialogTitle>
           </DialogHeader>
 
-          <select
-            className="border p-2 w-full rounded mb-2"
-            value={statusForm.status_type}
-            onChange={(e) =>
-              setStatusForm({
-                ...statusForm,
-                status_type: e.target.value,
-              })
-            }
-          >
-            <option value="">Select Status</option>
+          <div className="flex flex-col gap-2">
+            {/* STATUS DROPDOWN */}
+            <select
+              className="border p-2 w-full rounded mb-2"
+              value={statusForm.status_id}
+              onChange={(e) => {
+                const selected = statuses.find(
+                  (s) => s.id === Number(e.target.value),
+                );
 
-            {[
-              "Follow-Up",
-              "Appointment Scheduled",
-              "Not Interested",
-              "Interested",
-              "Quotation Sent",
-              "Negotiation",
-              "Closed-Ordered",
-              "Closed-Lost",
-              "On Hold",
-              "Callback Requested",
-              "Unreachable",
-            ].map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
+                setStatusForm({
+                  ...statusForm,
+                  status_id: selected?.id || "",
+                  status_type: selected?.name || "",
+                });
+              }}
+            >
+              <option value="">Select Status</option>
 
-          <textarea
-            className="border p-2 w-full"
-            placeholder="Remark"
-            value={statusForm.remark}
-            onChange={(e) =>
-              setStatusForm({
-                ...statusForm,
-                remark: e.target.value,
-              })
-            }
-          />
+              {statuses.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
 
-          <Button onClick={addStatus}>Save Status</Button>
+            {/* REMARK */}
+            <textarea
+              className="border p-2 w-full rounded mb-2"
+              placeholder="Remark"
+              value={statusForm.remark}
+              onChange={(e) =>
+                setStatusForm({
+                  ...statusForm,
+                  remark: e.target.value,
+                })
+              }
+            />
+
+            {/* RESCHEDULE TIME */}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="" className="">
+                Reschedule Time
+              </label>
+              <input
+                type="datetime-local"
+                className="border p-2 w-full rounded mb-2"
+                value={statusForm.reschedule_time || ""}
+                onChange={(e) =>
+                  setStatusForm({
+                    ...statusForm,
+                    reschedule_time: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            {/* SHIFT */}
+            <select
+              className="border p-2 w-full rounded mb-2"
+              value={statusForm.shift || ""}
+              onChange={(e) =>
+                setStatusForm({
+                  ...statusForm,
+                  shift: e.target.value,
+                })
+              }
+            >
+              <option value="">Select Shift</option>
+              <option value="morning">Morning</option>
+              <option value="noon">Noon</option>
+              <option value="evening">Evening</option>
+            </select>
+
+            <Button onClick={addStatus}>Save Status</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
