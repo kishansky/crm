@@ -69,16 +69,6 @@ export default function LeadForm() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Company Name */}
-          <div className="space-y-2 ">
-            <label className="text-sm font-medium ">Company Name</label>
-            <Input
-              name="company_name"
-              placeholder="Enter company name"
-              value={form.company_name}
-              onChange={handleChange}
-            />
-          </div>
 
           {/* Contact Person (Required) */}
           <div className="space-y-1.5">
@@ -116,6 +106,19 @@ export default function LeadForm() {
               name="email"
               placeholder="Enter email"
               value={form.email}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Address 
+            </label>
+
+            <Input
+              name="company_name"
+              placeholder="Address"
+              value={form.company_name}
               onChange={handleChange}
             />
           </div>

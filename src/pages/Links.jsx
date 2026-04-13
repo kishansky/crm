@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 
-const BASE_URL = "https://crm.onexcode.com/form";
+const BASE_URL = "https://crm.nexzendigi.com/form";
 
 const sources = [
   "website",

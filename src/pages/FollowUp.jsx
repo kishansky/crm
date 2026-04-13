@@ -323,47 +323,56 @@ export default function FollowUps() {
                       </td>
                     )}
                     {/* PERSON */}
-                    <td className="p-3">{lead.contact_person}</td>
+                    <td className="p-3">{lead?.contact_person}</td>
 
                     {/* PHONE */}
                     <td className="p-3">
                       <a
-                        href={`tel:${lead.phone_number}`}
+                        href={`tel:${lead?.phone_number}`}
                         onClick={(e) => e.stopPropagation()}
                         className="text-blue-500"
                       >
-                        {lead.phone_number}
+                        {lead?.phone_number}
                       </a>
                     </td>
 
                     {/* STATUS */}
-                    <td className="p-3">
-                      <Badge
-                        style={{
-                          color: status?.color,
-                          backgroundColor: status?.color + "33",
-                        }}
-                      >
-                        {status?.name}
-                      </Badge>
+                    <td className="p-3 min-w-[100px]">
+                      {lead?.latest_status &&
+                        (() => {
+                          const status =
+                            statusMap[lead.latest_status.status_id];
+
+                          return (
+                            <Badge
+                              style={{
+                                color: status?.color,
+                                backgroundColor: status?.color + "33",
+                              }}
+                              className={"text-xs"}
+                            >
+                              {status?.name}
+                            </Badge>
+                          );
+                        })()}
                     </td>
 
                     {/* FOLLOW-UP */}
                     <td className="p-3">
-                      {lead.latest_status?.reschedule_time ? (
+                      {lead?.latest_status?.reschedule_time ? (
                         <>
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
                             <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 font-medium">
                               📅{" "}
                               {new Date(
-                                lead.latest_status.reschedule_time,
+                                lead?.latest_status?.reschedule_time,
                               ).toLocaleDateString()}
                             </span>
                             {/* TIME */}
                             <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 font-medium">
                               ⏰{" "}
                               {new Date(
-                                lead.latest_status.reschedule_time,
+                                lead?.latest_status?.reschedule_time,
                               ).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -380,14 +389,14 @@ export default function FollowUps() {
                     <td className="p-3 capitalize">
                       <span
                         className={`text-xs px-2 py-1 rounded capitalize font-medium ${
-                          lead.latest_status.shift === "morning"
+                          lead?.latest_status?.shift === "morning"
                             ? "bg-yellow-50 text-yellow-600"
-                            : lead.latest_status.shift === "noon"
+                            : lead?.latest_status?.shift === "noon"
                               ? "bg-orange-50 text-orange-600"
                               : "bg-purple-50 text-purple-600"
                         }`}
                       >
-                        {lead.latest_status.shift || "--"}
+                        {lead?.latest_status?.shift || "--"}
                       </span>
                     </td>
 
@@ -472,10 +481,10 @@ export default function FollowUps() {
           </div>
         )}
         {leads.map((lead) => {
-          const status = statusMap[lead.latest_status?.status_id];
+          const status = statusMap[lead?.latest_status?.status_id];
 
-          const date = lead.latest_status?.Freschedule_time
-            ? new Date(lead.latest_status.reschedule_time)
+          const date = lead?.latest_status?.Freschedule_time
+            ? new Date(lead?.latest_status?.reschedule_time)
             : null;
 
           return (
@@ -505,7 +514,7 @@ export default function FollowUps() {
                     />
                   )}
                   <h3 className="font-semibold text-sm">
-                    {lead.contact_person}
+                    {lead?.contact_person}
                   </h3>
                 </div>
 
@@ -526,10 +535,10 @@ export default function FollowUps() {
                   className="text-blue-500"
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.location.href = `tel:${lead.phone_number}`;
+                    window.location.href = `tel:${lead?.phone_number}`;
                   }}
                 >
-                  {lead.phone_number}
+                  {lead?.phone_number}
                 </span>
               </p>
               <p className="text-xs mt-2">
@@ -538,21 +547,21 @@ export default function FollowUps() {
                   className="text-blue-500"
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.location.href = `mailto:${lead.email}`;
+                    window.location.href = `mailto:${lead?.email}`;
                   }}
                 >
-                  {lead.email}
+                  {lead?.email}
                 </span>
               </p>
 
               {/* RESCHEDULE (BEAUTIFUL) */}
-              {lead.latest_status?.reschedule_time && (
+              {lead?.latest_status?.reschedule_time && (
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   {/* DATE */}
                   <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 font-medium">
                     📅{" "}
                     {new Date(
-                      lead.latest_status.reschedule_time,
+                      lead?.latest_status?.reschedule_time,
                     ).toLocaleDateString()}
                   </span>
 
@@ -560,7 +569,7 @@ export default function FollowUps() {
                   <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 font-medium">
                     ⏰{" "}
                     {new Date(
-                      lead.latest_status.reschedule_time,
+                      lead?.latest_status?.reschedule_time,
                     ).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -568,17 +577,17 @@ export default function FollowUps() {
                   </span>
 
                   {/* SHIFT */}
-                  {lead.latest_status?.shift && (
+                  {lead?.latest_status?.shift && (
                     <span
                       className={`text-xs px-2 py-1 rounded capitalize font-medium ${
-                        lead.latest_status.shift === "morning"
+                        lead?.latest_status?.shift === "morning"
                           ? "bg-yellow-50 text-yellow-600"
-                          : lead.latest_status.shift === "noon"
+                          : lead?.latest_status?.shift === "noon"
                             ? "bg-orange-50 text-orange-600"
                             : "bg-purple-50 text-purple-600"
                       }`}
                     >
-                      {lead.latest_status.shift}
+                      {lead?.latest_status?.shift}
                     </span>
                   )}
                 </div>
@@ -600,7 +609,7 @@ export default function FollowUps() {
                   size="sm"
                   className="flex-1 bg-blue-500"
                   onClick={() =>
-                    (window.location.href = `tel:${lead.phone_number}`)
+                    (window.location.href = `tel:${lead?.phone_number}`)
                   }
                 >
                   <PhoneIcon />
@@ -611,7 +620,7 @@ export default function FollowUps() {
                   size="sm"
                   className="flex-1 bg-green-500 text-white"
                   onClick={() =>
-                    window.open(`https://wa.me/${lead.phone_number}`, "_blank")
+                    window.open(`https://wa.me/${lead?.phone_number}`, "_blank")
                   }
                 >
                   <FaWhatsapp />

@@ -13,6 +13,7 @@ import FollowUp from "@/pages/FollowUp";
 import LeadForm from "@/pages/LeadFrom";
 import Links from "@/pages/Links";
 import ThankYou from "@/pages/ThankYou";
+import TeamStatusReport from "@/pages/TeamStatusReport";
 
 export default function AppRouter() {
   return (
@@ -30,6 +31,7 @@ export default function AppRouter() {
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         <Route path="/follow-up" element={<ProtectedRoute><FollowUp /></ProtectedRoute>} />        
         <Route path="/links" element={<ProtectedRoute><Links /></ProtectedRoute>} />        
+        <Route path="/team-status-reports" element={<ProtectedRoute><TeamStatusReport /></ProtectedRoute>} />        
         <Route path="/form" element={<LeadForm />} />        
         <Route path="/thank-you" element={<ThankYou />} />        
 

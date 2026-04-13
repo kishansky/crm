@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { FaWhatsapp } from "react-icons/fa";
 import { PhoneIcon } from "lucide-react";
 import { MdDelete, MdEdit } from "react-icons/md";
+import FormatDate from "@/components/FormatDate";
 
 export default function LeadDetails() {
   const { id } = useParams();
@@ -91,9 +92,16 @@ export default function LeadDetails() {
         assigned_to: role === "sales" ? user.sales_person_id : form.assigned_to,
       };
 
-      await api.put(`/leads/${editing}`, payload);
+      const result = await api.put(`/leads/${editing}`, payload);
 
-      toast.success("Lead updated");
+      
+      if (result.data?.status === true) {
+        
+        toast.success("Lead updated");
+      } else {
+        toast.error(result.data?.message || "Error saving lead");
+        
+      }
 
       setOpen(false);
       setForm({});
@@ -223,46 +231,48 @@ export default function LeadDetails() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 flex-wrap">
-              Company Info
-              {
-                role === "admin" && lead.source && <Badge>{lead.source}</Badge>
-            }
-              
+              Description Info
+              {role === "admin" && lead?.source && <Badge>{lead?.source}</Badge>}
             </CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-2">
-            <p className="font-medium break-words">{lead.company_name}</p>
             <p className="text-xs text-muted-foreground break-words">
-              {lead.enquiry_description || "No description"}
+              {lead?.enquiry_description || "No description"}
             </p>
           </CardContent>
         </Card>
 
         {/* CONTACT */}
         <Card>
-          <CardHeader>
-            <CardTitle>Contact</CardTitle>
+          <CardHeader className={"flex flex-row justify-between"}>
+            <CardTitle>Contact Info</CardTitle>
+            <p className="text-xs text-gray-500 whitespace-nowrap">
+              <FormatDate date={lead?.created_at} />
+            </p>
           </CardHeader>
 
           <CardContent className="space-y-2 text-sm">
             <p className="break-words">
-              <b>Name:</b> {lead.contact_person || "-"}
+              <b>Name:</b> {lead?.contact_person || "-"}
             </p>
 
             <p className="break-words">
               <b>Phone:</b>{" "}
               <a
-                href={`tel:${lead.phone_number}`}
+                href={`tel:${lead?.phone_number}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-blue-500"
               >
-                {lead.phone_number || "-"}
+                {lead?.phone_number || "-"}
               </a>
             </p>
 
             <p className="break-words">
-              <b>Email:</b> {lead.email || "-"}
+              <b>Email:</b> {lead?.email || "-"}
+            </p>
+            <p className="font-medium break-words">
+              <b>Address:</b> {lead?.company_name}
             </p>
           </CardContent>
         </Card>
@@ -300,11 +310,11 @@ export default function LeadDetails() {
           </CardContent> */}
 
           <CardContent>
-            {lead.status_history?.length === 0 ? (
+            {lead?.status_history?.length === 0 ? (
               <p className="text-sm text-muted-foreground">No status</p>
             ) : (
               <div className="relative pl-2">
-                {[...(lead.status_history || [])]
+                {[...(lead?.status_history || [])]
                   .sort(
                     (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
                   )
@@ -314,12 +324,12 @@ export default function LeadDetails() {
                     return (
                       <div key={s.history_id} className="relative mb-4">
                         {/* LINE */}
-                        {index !== lead.status_history.length - 1 && (
+                        {index !== lead?.status_history.length - 1 && (
                           <span
                             className="absolute left-[5px] top-5 w-[2px] h-[90%]"
                             style={{
                               backgroundColor: status?.color
-                                ? status.color + "80" // 🔥 50% opacity
+                                ? status?.color + "80" // 🔥 50% opacity
                                 : "#ccc",
                             }}
                           ></span>
@@ -334,7 +344,9 @@ export default function LeadDetails() {
                         ></div>
 
                         {/* CONTENT */}
-                        <div className={`ml-6 border rounded-lg p-3 bg-white shadow-sm ${s.reschedule_time ? "border-red-300" : ""}`}>
+                        <div
+                          className={`ml-6 border rounded-lg p-3 bg-white shadow-sm ${s?.reschedule_time ? "border-red-300" : ""}`}
+                        >
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-1">
                             {/* LEFT SIDE */}
                             <div className="flex flex-wrap items-center gap-2">
@@ -353,11 +365,11 @@ export default function LeadDetails() {
                                 <span className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 font-medium">
                                   📅{" "}
                                   {new Date(
-                                    s.reschedule_time,
+                                    s?.reschedule_time,
                                   ).toLocaleDateString()}{" "}
                                   ⏰{" "}
                                   {new Date(
-                                    s.reschedule_time,
+                                    s?.reschedule_time,
                                   ).toLocaleTimeString([], {
                                     hour: "2-digit",
                                     minute: "2-digit",
@@ -366,26 +378,26 @@ export default function LeadDetails() {
                               )}
 
                               {/* SHIFT */}
-                              {s.shift && (
+                              {s?.shift && (
                                 <span className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 capitalize font-medium">
-                                  {s.shift}
+                                  {s?.shift}
                                 </span>
                               )}
                             </div>
 
                             {/* RIGHT SIDE */}
                             <div className="flex items-center gap-2">
-                              <Badge>{s.added_by_name || "Admin"}</Badge>
+                              <Badge>{s?.added_by_name || "Admin"}</Badge>
 
                               <span className="text-xs text-muted-foreground font-semibold">
-                                {new Date(s.updated_at).toLocaleString()}
+                                {new Date(s?.updated_at).toLocaleString()}
                               </span>
                             </div>
                           </div>
 
                           {/* REMARK */}
                           <p className="text-sm break-words">
-                            {s.remark || "No remark"}
+                            {s?.remark || "No remark"}
                           </p>
                         </div>
                       </div>
@@ -406,14 +418,6 @@ export default function LeadDetails() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input
-              placeholder="Company"
-              value={form.company_name || ""}
-              onChange={(e) =>
-                setForm({ ...form, company_name: e.target.value })
-              }
-            />
-
-            <Input
               placeholder="Contact Person"
               value={form.contact_person || ""}
               onChange={(e) =>
@@ -433,6 +437,14 @@ export default function LeadDetails() {
               placeholder="Email"
               value={form.email || ""}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+
+            <Input
+              placeholder="Address"
+              value={form.company_name || ""}
+              onChange={(e) =>
+                setForm({ ...form, company_name: e.target.value })
+              }
             />
 
             <Input

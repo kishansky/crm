@@ -3,7 +3,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import api from "../api/axios";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, BarChart3 } from "lucide-react";
+import { Users } from "lucide-react";
 
 import {
   ResponsiveContainer,
@@ -19,26 +19,19 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    leads: 0,
-    sales: 0,
-    performance: 0,
-  });
-
-  const [statuses, setStatuses] = useState([]);
+  const navigate = useNavigate();
 
   const [stats1, setStats1] = useState({
     total_leads: 0,
     today_leads: 0,
-    interested: 0,
-    closed: 0,
-    sales: 0,
+    weekly_leads: 0,
+    monthly_leads: 0,
+    status_counts: [],
   });
 
+  const [statuses, setStatuses] = useState([]);
   const [recentLeads, setRecentLeads] = useState([]);
   const [chartData, setChartData] = useState([]);
-  const navigate = useNavigate();
-
   const [loading, setLoading] = useState(true);
 
   // ✅ Role & User
@@ -50,11 +43,12 @@ export default function Dashboard() {
     fetchStatuses();
   }, []);
 
+  // ✅ Fetch Dashboard Data
   const fetchDashboard = async () => {
     try {
       setLoading(true);
 
-      let statsRes, salesRes, perfRes, leadsRes;
+      let statsRes, perfRes, leadsRes;
 
       if (role === "admin") {
         [statsRes, perfRes, leadsRes] = await Promise.all([
@@ -70,25 +64,24 @@ export default function Dashboard() {
       }
 
       const statsData = statsRes.data;
-      const salesData = salesRes?.data.length || [];
       const perfData = Array.isArray(perfRes?.data)
-        ? perfRes.data
+        ? perfRes?.data
         : perfRes?.data?.data || [];
       const leadsData = leadsRes?.data?.data || [];
 
       // ✅ Stats
       setStats1({
-        total_leads: statsData.total_leads,
-        today_leads: statsData.today_leads,
-        interested: statsData.interested,
-        closed: statsData.closed,
-        sales: role === "admin" ? salesData.length : 0,
+        total_leads: statsData.total_leads || 0,
+        today_leads: statsData.today_leads || 0,
+        weekly_leads: statsData.weekly_leads || 0,
+        monthly_leads: statsData.monthly_leads || 0,
+        status_counts: statsData.status_counts || [],
       });
 
       // ✅ Recent Leads
       setRecentLeads(leadsData.slice(0, 5));
 
-      // ✅ Chart
+      // ✅ Performance Chart (Admin Only)
       if (role === "admin") {
         const formattedChart = perfData.map((item) => ({
           report_date: item.report_date,
@@ -96,22 +89,28 @@ export default function Dashboard() {
           total_calls: Number(item.total_calls),
           closed_ordered: Number(item.closed_ordered),
         }));
-
         setChartData(formattedChart);
       }
     } catch (err) {
-      console.log(err);
+      console.error("Dashboard Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Fetch Status List
   const fetchStatuses = async () => {
-    const res = await api.get("/statuses");
-    setStatuses(res.data);
+    try {
+      const res = await api.get("/statuses");
+      setStatuses(res.data);
+    } catch (error) {
+      console.error("Failed to fetch statuses", error);
+    }
   };
 
-  const statusMap = Object.fromEntries(statuses.map((s) => [s.id, s]));
+  const statusMap = Object.fromEntries(
+    statuses.map((s) => [s.id, s])
+  );
 
   if (loading) {
     return (
@@ -141,6 +140,100 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Leads */}
+        <Card>
+          <CardContent className="p-5 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {role === "admin" ? "Total Leads" : "My Leads"}
+              </p>
+              <h2 className="text-2xl font-bold">
+                {stats1.total_leads}
+              </h2>
+            </div>
+            <div className="bg-blue-100 text-blue-600 p-3 rounded-xl">
+              <Users size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Today's Leads */}
+        <Card>
+          <CardContent className="p-5 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Today's Leads
+              </p>
+              <h2 className="text-2xl font-bold">
+                {stats1.today_leads}
+              </h2>
+            </div>
+            <div className="bg-yellow-100 text-yellow-600 p-3 rounded-xl">
+              📅
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Leads */}
+        <Card>
+          <CardContent className="p-5 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Weekly Leads
+              </p>
+              <h2 className="text-2xl font-bold">
+                {stats1.weekly_leads}
+              </h2>
+            </div>
+            <div className="bg-green-100 text-green-600 p-3 rounded-xl">
+              📈
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Monthly Leads */}
+        <Card>
+          <CardContent className="p-5 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Monthly Leads
+              </p>
+              <h2 className="text-2xl font-bold">
+                {stats1.monthly_leads}
+              </h2>
+            </div>
+            <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
+              📊
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* STATUS-WISE STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+        {stats1.status_counts.map((status) => (
+          <Card key={status.status_id}>
+            <CardContent className="p-5 flex justify-between items-center">
+              <div>
+                <Badge
+                style={{
+                      backgroundColor: status.status_color + "33",
+                      color: status.status_color,
+                    }}  className="text-sm ">
+                  {status.status_name}
+                </Badge>
+                <h2 className="text-2xl font-bold mt-2">
+                  {status.count}
+                </h2>
+              </div>
+              
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       {/* TOP GRID */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* RECENT LEADS */}
@@ -151,16 +244,22 @@ export default function Dashboard() {
 
           <CardContent className="space-y-3">
             {recentLeads.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No leads found</p>
+              <p className="text-sm text-muted-foreground">
+                No leads found
+              </p>
             ) : (
               recentLeads.map((lead) => (
                 <div
                   key={lead.lead_id}
-                  className="flex justify-between border-b p-2 rounded-2xl hover:cursor-pointer hover:bg-gray-50"
-                  onClick={() => navigate(`/leads/${lead.lead_id}`)}
+                  className="flex justify-between border-b p-2 rounded-xl hover:cursor-pointer hover:bg-gray-50"
+                  onClick={() =>
+                    navigate(`/leads/${lead.lead_id}`)
+                  }
                 >
                   <div>
-                    <p className="font-medium text-sm">{lead.company_name}</p>
+                    <p className="font-medium text-sm">
+                      {lead.company_name || "N/A"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {lead.contact_person} | {lead.phone_number}
                     </p>
@@ -168,12 +267,16 @@ export default function Dashboard() {
                   <div className="flex gap-3">
                     {lead.latest_status &&
                       (() => {
-                        const status = statusMap[lead.latest_status.status_id];
+                        const status =
+                          statusMap[
+                            lead.latest_status.status_id
+                          ];
                         return (
                           <Badge
                             style={{
                               color: status?.color,
-                              backgroundColor: status?.color + "33",
+                              backgroundColor:
+                                status?.color + "33",
                             }}
                           >
                             {status?.name}
@@ -202,91 +305,15 @@ export default function Dashboard() {
                   <Tooltip />
                   <Bar dataKey="total_leads" fill="#3b82f6" />
                   <Bar dataKey="total_calls" fill="#10b981" />
-                  <Bar dataKey="closed_ordered" fill="#a855f7" />
+                  <Bar
+                    dataKey="closed_ordered"
+                    fill="#a855f7"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         )}
-      </div>
-
-      {/* STATS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-        <Card>
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {role === "admin" ? "Total Leads" : "My Leads"}
-              </p>
-              <h2 className="text-2xl font-bold">{stats1.total_leads}</h2>
-            </div>
-            <div className="bg-blue-100 text-blue-600 p-3 rounded-xl">
-              <Users size={20} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Today's Leads</p>
-              <h2 className="text-2xl font-bold">{stats1.today_leads}</h2>
-            </div>
-            <div className="bg-yellow-100 text-yellow-600 p-3 rounded-xl">
-              📅
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Interested Leads</p>
-              <h2 className="text-2xl font-bold">{stats1.interested}</h2>
-            </div>
-            <div className="bg-green-100 text-green-600 p-3 rounded-xl">👍</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">Closed Deals</p>
-              <h2 className="text-2xl font-bold">{stats1.closed}</h2>
-            </div>
-            <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
-              💰
-            </div>
-          </CardContent>
-        </Card>
-        {/* ADMIN ONLY */}
-        {/* {role === "admin" && (
-          <>
-            <Card>
-              <CardContent className="p-5 flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Sales Team</p>
-                  <h2 className="text-2xl font-bold">{stats1.sales}</h2>
-                </div>
-                <div className="bg-green-100 text-green-600 p-3 rounded-xl">
-                  <UserCheck size={20} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5 flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-muted-foreground">Performance</p>
-                  <h2 className="text-2xl font-bold">{stats.performance}</h2>
-                </div>
-                <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
-                  <BarChart3 size={20} />
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )} */}
       </div>
     </DashboardLayout>
   );

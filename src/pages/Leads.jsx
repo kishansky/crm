@@ -25,6 +25,7 @@ import {
   FaWhatsapp,
 } from "react-icons/fa";
 import { MdAdd, MdAssignmentInd, MdDelete, MdEdit } from "react-icons/md";
+import FormatDate from "@/components/FormatDate";
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
@@ -158,22 +159,45 @@ export default function Leads() {
 
       if (editing) {
         await api.put(`/leads/${editing}`, payload);
-        toast.success("Lead updated");
+        toast.success("Lead updated successfully");
       } else {
         await api.post("/leads", {
           ...payload,
           lead_id: "L" + Date.now(),
           timestamp: new Date().toISOString().slice(0, 19).replace("T", " "),
         });
-        toast.success("Lead created");
+        toast.success("Lead created successfully");
       }
 
+      // Reset state after success
       setOpen(false);
       setForm({});
       setEditing(null);
       fetchLeads(page);
-    } catch {
-      toast.error("Error saving lead");
+    } catch (error) {
+      // 🔍 Handle duplicate phone number error (409 Conflict)
+      if (error.response) {
+        const status = error.response.status;
+        const message = error.response.data?.message;
+
+        if (status === 409) {
+          toast.error(message || "Phone number already registered");
+        } else if (status === 422) {
+          // Validation errors
+          const errors = error.response.data?.errors;
+          if (errors) {
+            Object.values(errors).forEach((errArray) => {
+              errArray.forEach((msg) => toast.error(msg));
+            });
+          } else {
+            toast.error(message || "Validation failed");
+          }
+        } else {
+          toast.error(message || "Something went wrong");
+        }
+      } else {
+        toast.error("Network error. Please try again.");
+      }
     }
   };
 
@@ -184,8 +208,8 @@ export default function Leads() {
 
     if (!confirm("Delete this lead?")) return;
 
-    await api.delete(`/leads/${id}`);
-    toast.success("Deleted");
+    const result = await api.delete(`/leads/${id}`);
+    toast.success(result?.data?.message);
     fetchLeads(page);
   };
 
@@ -200,11 +224,11 @@ export default function Leads() {
   });
 
   const EXPORT_COLUMNS = [
-    // "company",
     "contact_person",
     "phone",
     "email",
     "source",
+    // "address",
     "latest_status",
   ];
 
@@ -268,7 +292,6 @@ export default function Leads() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      console.log(result);
 
       toast.success(result?.data?.message);
 
@@ -357,11 +380,11 @@ export default function Leads() {
     if (!confirm("Delete selected leads? 🗑️")) return;
 
     try {
-      await api.post("/leads-bulk-delete", {
+      const result = await api.post("/leads-bulk-delete", {
         lead_ids: selectedLeads,
       });
 
-      toast.success("Deleted successfully 🚀");
+      toast.success(result?.data?.message);
 
       setSelectedLeads([]);
       fetchLeads(page);
@@ -558,16 +581,19 @@ export default function Leads() {
                         <p className="pl-2">All</p>
                       </th>
                     )}
-                    {/* <th className="p-3 text-left">Company</th> */}
-                    <th className="p-3 text-left">Person</th>
-                    <th className="p-3 text-left">Phone</th>
-                    <th className="p-3 text-left">Email</th>
+                    <th className="p-3 text-left whitespace-nowrap">Person</th>
+                    <th className="p-3 text-left">Contact</th>
+                    <th className="p-3 text-left">Address</th>
                     <th className="p-3 text-left">Status</th>
-                      {
-                        role === "admin" && (<><th className="p-3 text-left">Source</th>
-                      <th className="p-3 text-left">Assigned</th></>
+                    {role === "admin" && (
+                      <>
+                        <th className="p-3 text-left">Source</th>
+                        <th className="p-3 text-left">Assigned</th>
+                      </>
                     )}
-                    <th className="p-3 text-center">Action</th>
+                    <th className="p-3 text-center whitespace-nowrap">
+                      Action
+                    </th>
                   </tr>
                 </thead>
 
@@ -606,33 +632,43 @@ export default function Leads() {
                         </td>
                       )}
 
-                      {/* <td className="p-3">{lead.company_name}</td> */}
-                      <td className="p-3">{lead.contact_person}</td>
+                      <td className="p-3 min-w-[150px]">
+                        <p className="font-medium text-gray-800 whitespace-nowrap">
+                          {lead?.contact_person}
+                        </p>
+                        <p className="text-xs text-gray-500 whitespace-nowrap">
+                          <FormatDate date={lead?.created_at} />
+                        </p>
+                      </td>
 
-                      <td className="p-3">
-                        <a
-                          href={`tel:${lead.phone_number}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {lead.phone_number}
-                        </a>
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                        <p>
+                          <a
+                            href={`tel:${lead?.phone_number}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {lead?.phone_number}
+                          </a>
+                        </p>
+                        <p>
+                          <a
+                            href={`mailto:${lead?.email}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {lead?.email}
+                          </a>
+                        </p>
                       </td>
-                      <td className="p-3">
-                        <a
-                          href={`mailto:${lead.email}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {lead.email}
-                        </a>
-                      </td>
+
+                      <td className="p-3 min-w-[150px]">{lead?.company_name}</td>
 
                       {/* <td className="p-3">{lead.source}</td> */}
 
-                      <td className="p-3">
-                        {lead.latest_status &&
+                      <td className="p-3 min-w-[100px]">
+                        {lead?.latest_status &&
                           (() => {
                             const status =
-                              statusMap[lead.latest_status.status_id];
+                              statusMap[lead?.latest_status?.status_id];
 
                             return (
                               <Badge
@@ -640,6 +676,7 @@ export default function Leads() {
                                   color: status?.color,
                                   backgroundColor: status?.color + "33",
                                 }}
+                                className={"text-xs"}
                               >
                                 {status?.name}
                               </Badge>
@@ -647,73 +684,74 @@ export default function Leads() {
                           })()}
                       </td>
 
-                      {role === "admin" && (<>
-                        <td className="p-3">
-                          {
-                            lead.source && (<Badge >{lead.source}</Badge>)
-                          }
-                        </td>
-                        <td className="p-3">{lead.sales_person?.name}</td>
-                      </>
+                      {role === "admin" && (
+                        <>
+                          <td className="p-3">
+                            {lead.source && <Badge>{lead?.source}</Badge>}
+                          </td>
+                          <td className="p-3">{lead?.sales_person?.name}</td>
+                        </>
                       )}
 
                       {/* ✅ ACTIONS RESTORED */}
                       <td
-                        className="p-3 space-x-2 text-center"
+                        className="p-3 text-center whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            (window.location.href = `tel:${lead.phone_number}`)
-                          }
-                          className="bg-blue-500 hover:bg-blue-500/90"
-                        >
-                          <PhoneIcon />
-                        </Button>
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              (window.location.href = `tel:${lead?.phone_number}`)
+                            }
+                            className="bg-blue-500 hover:bg-blue-500/90"
+                          >
+                            <PhoneIcon />
+                          </Button>
 
-                        <Button
-                          size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white"
-                          onClick={() =>
-                            window.open(
-                              `https://wa.me/${lead.phone_number}`,
-                              "_blank",
-                            )
-                          }
-                        >
-                          <FaWhatsapp size={16} />
-                        </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white"
+                            onClick={() =>
+                              window.open(
+                                `https://wa.me/${lead?.phone_number}`,
+                                "_blank",
+                              )
+                            }
+                          >
+                            <FaWhatsapp size={16} />
+                          </Button>
 
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedLeadId(lead.lead_id);
-                            setStatusOpen(true);
-                          }}
-                        >
-                          <MdAdd /> Status
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="bg-amber-100 hover:bg-amber-200"
-                          onClick={() => openModal(lead)}
-                        >
-                          <FaRegEdit />
-                        </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedLeadId(lead?.lead_id);
+                              setStatusOpen(true);
+                            }}
+                          >
+                            <MdAdd /> Status
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="bg-amber-100 hover:bg-amber-200"
+                            onClick={() => openModal(lead)}
+                          >
+                            <FaRegEdit />
+                          </Button>
 
-                        {role === "admin" && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteLead(lead.lead_id)}
-                            >
-                              <MdDelete />
-                            </Button>
-                          </>
-                        )}
+                          {role === "admin" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => deleteLead(lead?.lead_id)}
+                              >
+                                <MdDelete />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -732,17 +770,17 @@ export default function Leads() {
                     checked={
                       leads.length > 0 &&
                       leads.every((lead) =>
-                        selectedLeads.includes(lead.lead_id),
+                        selectedLeads.includes(lead?.lead_id),
                       )
                     }
                     onChange={(e) => {
                       if (e.target.checked) {
-                        const allIds = leads.map((lead) => lead.lead_id);
+                        const allIds = leads.map((lead) => lead?.lead_id);
                         setSelectedLeads((prev) => [
                           ...new Set([...prev, ...allIds]),
                         ]);
                       } else {
-                        const currentIds = leads.map((lead) => lead.lead_id);
+                        const currentIds = leads.map((lead) => lead?.lead_id);
                         setSelectedLeads((prev) =>
                           prev.filter((id) => !currentIds.includes(id)),
                         );
@@ -791,7 +829,7 @@ export default function Leads() {
 
                     {lead.latest_status &&
                       (() => {
-                        const status = statusMap[lead.latest_status.status_id];
+                        const status = statusMap[lead?.latest_status?.status_id];
 
                         return (
                           <Badge
@@ -808,10 +846,6 @@ export default function Leads() {
 
                   {/* INFO */}
                   <div className="text-xs mt-2 space-y-1 text-muted-foreground">
-                    {/* <p>
-                      <b>Person:</b> {lead?.contact_person}
-                    </p> */}
-
                     <p>
                       <b>Phone:</b>{" "}
                       <span
@@ -837,6 +871,12 @@ export default function Leads() {
                       </span>
                     </p>
 
+                    <p>
+                      <b>Address:</b> {lead?.company_name}
+                    </p>
+                    <p>
+                      <b>Date:</b> <FormatDate date={lead?.created_at} />
+                    </p>
                     {role === "admin" && (
                       <>
                         <p>
@@ -882,7 +922,7 @@ export default function Leads() {
                       size="sm"
                       className="flex-1"
                       onClick={() => {
-                        setSelectedLeadId(lead.lead_id);
+                        setSelectedLeadId(lead?.lead_id);
                         setStatusOpen(true);
                       }}
                     >
@@ -905,7 +945,7 @@ export default function Leads() {
                           size="sm"
                           variant="destructive"
                           className="flex-1"
-                          onClick={() => deleteLead(lead.lead_id)}
+                          onClick={() => deleteLead(lead?.lead_id)}
                         >
                           <MdDelete />
                           Delete
@@ -966,14 +1006,6 @@ export default function Leads() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input
-              placeholder="Company"
-              value={form.company_name || ""}
-              onChange={(e) =>
-                setForm({ ...form, company_name: e.target.value })
-              }
-            />
-
-            <Input
               placeholder="Contact Person"
               value={form.contact_person || ""}
               onChange={(e) =>
@@ -994,6 +1026,14 @@ export default function Leads() {
               placeholder="Email"
               value={form.email || ""}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+
+            <Input
+              placeholder="Address"
+              value={form.company_name || ""}
+              onChange={(e) =>
+                setForm({ ...form, company_name: e.target.value })
+              }
             />
 
             <Input

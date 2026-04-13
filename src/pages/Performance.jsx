@@ -26,7 +26,6 @@ import Loader from "@/components/ui/Loader";
 import { MdDelete, MdEdit } from "react-icons/md";
 
 export default function Performance() {
-
   const [data, setData] = useState([]);
   const [sales, setSales] = useState([]);
 
@@ -46,7 +45,6 @@ export default function Performance() {
       const res = await api.get("/performance");
       setData(res.data);
       setLoading(false);
-      
     } catch {
       toast.error("Failed to load performance");
       setLoading(false);
@@ -88,7 +86,6 @@ export default function Performance() {
       setForm({});
       setEditing(null);
       fetchData();
-
     } catch {
       toast.error("Error saving data ❌");
     }
@@ -110,9 +107,7 @@ export default function Performance() {
   // ✅ KPI BADGE LOGIC
   const getPerformanceBadge = (item) => {
     const ratio =
-      item.total_leads > 0
-        ? item.closed_ordered / item.total_leads
-        : 0;
+      item.total_leads > 0 ? item.closed_ordered / item.total_leads : 0;
 
     if (ratio >= 0.5) {
       return <Badge className="bg-green-100 text-green-700">High</Badge>;
@@ -123,153 +118,148 @@ export default function Performance() {
     }
   };
 
-      if (loading) {
-        return (<DashboardLayout>
-          <div className="flex justify-between mb-6">
-        <h1 className="text-xl font-semibold">Performance</h1>
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-between mb-6">
+          <h1 className="text-xl font-semibold">Performance</h1>
 
-        <Button onClick={() => openModal()}>
-          + Add Record
-        </Button>
-      </div>
-          <Loader type="table"/>
-        </DashboardLayout>)
-    }
+          <Button onClick={() => openModal()}>+ Add Record</Button>
+        </div>
+        <Loader type="table" />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-
       {/* HEADER */}
       {/* HEADER */}
       <div className="flex justify-between mb-6">
         <h1 className="text-xl font-semibold">Performance</h1>
 
-        <Button onClick={() => openModal()}>
-          + Add Record
-        </Button>
+        <Button onClick={() => openModal()}>+ Add Record</Button>
       </div>
 
-
       {!loading ? (
-  <>
-    {/* ================= DESKTOP ================= */}
-    <div className="hidden md:block border rounded-lg overflow-x-auto">
-      <Table className="min-w-[800px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Sales</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Leads</TableHead>
-            <TableHead>Calls</TableHead>
-            <TableHead>Closed</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
-          </TableRow>
-        </TableHeader>
+        <>
+          {/* ================= DESKTOP ================= */}
+          <div className="hidden md:block border rounded-lg overflow-x-auto">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Sales</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Leads</TableHead>
+                  <TableHead>Calls</TableHead>
+                  <TableHead>Closed</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
 
-        <TableBody>
-          {data.map((item) => (
-            <TableRow key={item.perf_id}>
-              <TableCell>{item.sales_person?.name}</TableCell>
-              <TableCell>{item.report_date}</TableCell>
-              <TableCell>{item.total_leads}</TableCell>
-              <TableCell>{item.total_calls}</TableCell>
-              <TableCell>{item.closed_ordered}</TableCell>
+              <TableBody>
+                {data.map((item) => (
+                  <TableRow key={item.perf_id}>
+                    <TableCell>{item?.sales_person?.name}</TableCell>
+                    <TableCell>{item?.report_date}</TableCell>
+                    <TableCell>{item?.total_leads}</TableCell>
+                    <TableCell>{item?.total_calls}</TableCell>
+                    <TableCell>{item?.closed_ordered}</TableCell>
 
-              <TableCell>
-                {getPerformanceBadge(item)}
-              </TableCell>
+                    <TableCell>{getPerformanceBadge(item)}</TableCell>
 
-              <TableCell className="space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openModal(item)}
-                >
-                  <MdEdit /> Edit
-                </Button>
+                    <TableCell className="space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openModal(item)}
+                      >
+                        <MdEdit /> Edit
+                      </Button>
 
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => deleteItem(item.perf_id)}
-                >
-                  <MdDelete /> Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-          </div>
-          
-              {/* ================= MOBILE ================= */}
-    <div className="md:hidden flex flex-col gap-3">
-
-      {data.map((item) => (
-        <div
-          key={item.perf_id}
-          className="border rounded-lg p-3 bg-white shadow-sm"
-        >
-          {/* TOP */}
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-sm">
-              {item.sales_person?.name}
-            </h3>
-
-            {getPerformanceBadge(item)}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteItem(item.perf_id)}
+                      >
+                        <MdDelete /> Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
-          {/* INFO */}
-          <div className="text-xs text-muted-foreground mt-2 space-y-1">
-            <p><b>Date:</b> {item.report_date}</p>
-            <p><b>Leads:</b> {item.total_leads}</p>
-            <p><b>Calls:</b> {item.total_calls}</p>
-            <p><b>Closed:</b> {item.closed_ordered}</p>
+          {/* ================= MOBILE ================= */}
+          <div className="md:hidden flex flex-col gap-3">
+            {data.map((item) => (
+              <div
+                key={item.perf_id}
+                className="border rounded-lg p-3 bg-white shadow-sm"
+              >
+                {/* TOP */}
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-sm">
+                    {item?.sales_person?.name}
+                  </h3>
+
+                  {getPerformanceBadge(item)}
+                </div>
+
+                {/* INFO */}
+                <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                  <p>
+                    <b>Date:</b> {item?.report_date}
+                  </p>
+                  <p>
+                    <b>Leads:</b> {item?.total_leads}
+                  </p>
+                  <p>
+                    <b>Calls:</b> {item?.total_calls}
+                  </p>
+                  <p>
+                    <b>Closed:</b> {item?.closed_ordered}
+                  </p>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    variant="outline"
+                    onClick={() => openModal(item)}
+                  >
+                    Edit
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    variant="destructive"
+                    onClick={() => deleteItem(item.perf_id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
-
-          {/* ACTIONS */}
-          <div className="flex gap-2 mt-3">
-            <Button
-              size="sm"
-              className="flex-1"
-              variant="outline"
-              onClick={() => openModal(item)}
-            >
-              Edit
-            </Button>
-
-            <Button
-              size="sm"
-              className="flex-1"
-              variant="destructive"
-              onClick={() => deleteItem(item.perf_id)}
-            >
-              Delete
-            </Button>
-          </div>
-        </div>
-      ))}
-
-    </div>
-  </>
-) : (
-  <Loader type="table" />
-)}
+        </>
+      ) : (
+        <Loader type="table" />
+      )}
 
       {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
-
         <DialogContent className="max-w-md">
-
           <DialogHeader>
-            <DialogTitle>
-              {editing ? "Edit" : "Add"} Performance
-            </DialogTitle>
+            <DialogTitle>{editing ? "Edit" : "Add"} Performance</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3">
-
             <select
               className="border p-2 rounded w-full"
               value={form.sales_person_id || ""}
@@ -321,13 +311,9 @@ export default function Performance() {
             <Button onClick={save} className="w-full">
               Save
             </Button>
-
           </div>
-
         </DialogContent>
-
       </Dialog>
-
     </DashboardLayout>
   );
 }
