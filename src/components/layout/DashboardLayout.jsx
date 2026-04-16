@@ -7,7 +7,7 @@ export default function DashboardLayout({ children }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen">
 
       <Sidebar open={open} setOpen={setOpen} />
 
@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }) {
 
         <Header setOpen={setOpen} />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/40">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/40 w-full overflow-x-scroll">
           {children}
         </main>
 

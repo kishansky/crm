@@ -17,6 +17,7 @@ export default function Sidebar({ open, setOpen }) {
     { name: "Team-Reports", path: "/team-status-reports" },
     { name: "Performance", path: "/performance" },
     { name: "Status", path: "/status" },
+    { name: "Places", path: "/places" },
     { name: "Change Password", path: "/change-password" },
     { name: "Form-Links", path: "/links" },
     
@@ -52,7 +53,7 @@ export default function Sidebar({ open, setOpen }) {
 
       <aside
         className={cn(
-          "fixed md:static z-50 h-full w-48 bg-background border-r transform transition-transform flex flex-col",
+          "fixed md:static z-50 h-full min-w-40 bg-background border-r transform transition-transform flex flex-col",
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >

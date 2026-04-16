@@ -14,6 +14,7 @@ import LeadForm from "@/pages/LeadFrom";
 import Links from "@/pages/Links";
 import ThankYou from "@/pages/ThankYou";
 import TeamStatusReport from "@/pages/TeamStatusReport";
+import Places from "@/pages/Places";
 
 export default function AppRouter() {
   return (
@@ -28,6 +29,7 @@ export default function AppRouter() {
         <Route path="/sales-team" element={<ProtectedRoute><SalesTeam /></ProtectedRoute>} />
         <Route path="/performance" element={<ProtectedRoute><Performance /></ProtectedRoute>} />
         <Route path="/status" element={<ProtectedRoute><Status /></ProtectedRoute>} />
+        <Route path="/places" element={<ProtectedRoute><Places /></ProtectedRoute>} />
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         <Route path="/follow-up" element={<ProtectedRoute><FollowUp /></ProtectedRoute>} />        
         <Route path="/links" element={<ProtectedRoute><Links /></ProtectedRoute>} />        

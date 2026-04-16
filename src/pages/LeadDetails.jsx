@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
-import { FaWhatsapp } from "react-icons/fa";
+import { FaQuestionCircle, FaWhatsapp } from "react-icons/fa";
 import { PhoneIcon } from "lucide-react";
 import { MdDelete, MdEdit } from "react-icons/md";
 import FormatDate from "@/components/FormatDate";
@@ -45,9 +45,101 @@ export default function LeadDetails() {
   const role = localStorage.getItem("role");
   const user = JSON.parse(localStorage.getItem("user"));
 
+  // ===============================
+  // PLACES & NEEDS STATE
+  // ===============================
+  const [places, setPlaces] = useState([]);
+  const [needsOpen, setNeedsOpen] = useState(false);
+  const [editingNeedId, setEditingNeedId] = useState(null);
+  const [needForm, setNeedForm] = useState({
+    lead_id: "",
+    place_id: "",
+    property_type: "",
+    min_area: "",
+    max_area: "",
+    area_unit: "sqft",
+    min_budget: "",
+    max_budget: "",
+    description: "",
+  });
+
+  const fetchPlaces = async () => {
+    try {
+      const res = await api.get("/places-list");
+      setPlaces(res.data);
+    } catch (error) {
+      toast.error("Failed to load places");
+    }
+  };
+
+  const openNeedsModal = (leadId, need = null) => {
+    if (need) {
+      setNeedForm({
+        lead_id: need.lead_id || leadId,
+        place_id: need.place_id || "",
+        property_type: need.property_type || "",
+        min_area: need.min_area ? parseFloat(need.min_area) : "",
+        max_area: need.max_area ? parseFloat(need.max_area) : "",
+        area_unit: need.area_unit || "sqft",
+        min_budget: need.min_budget ? parseFloat(need.min_budget) : "",
+        max_budget: need.max_budget ? parseFloat(need.max_budget) : "",
+        description: need.description || "",
+      });
+      setEditingNeedId(need.id);
+    } else {
+      setNeedForm({
+        lead_id: leadId,
+        place_id: "",
+        property_type: "",
+        min_area: "",
+        max_area: "",
+        area_unit: "sqft",
+        min_budget: "",
+        max_budget: "",
+        description: "",
+      });
+      setEditingNeedId(null);
+    }
+
+    setNeedsOpen(true);
+  };
+
+  const saveNeed = async () => {
+    try {
+      if (editingNeedId) {
+        await api.put(`/needs/${editingNeedId}`, needForm);
+        toast.success("Need updated successfully");
+      } else {
+        await api.post("/needs", needForm);
+        toast.success("Need added successfully");
+      }
+
+      setNeedsOpen(false);
+      setEditingNeedId(null);
+      fetchLead();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Failed to save requirement",
+      );
+    }
+  };
+
+  const deleteNeed = async (id) => {
+    if (!confirm("Delete this requirement?")) return;
+
+    try {
+      await api.delete(`/needs/${id}`);
+      toast.success("Need deleted successfully");
+      fetchLead();
+    } catch (error) {
+      toast.error("Failed to delete requirement");
+    }
+  };
+
   useEffect(() => {
     fetchLead();
     fetchStatuses();
+    fetchPlaces();
 
     if (role === "admin") {
       fetchSales();
@@ -94,13 +186,10 @@ export default function LeadDetails() {
 
       const result = await api.put(`/leads/${editing}`, payload);
 
-      
       if (result.data?.status === true) {
-        
         toast.success("Lead updated");
       } else {
         toast.error(result.data?.message || "Error saving lead");
-        
       }
 
       setOpen(false);
@@ -155,6 +244,17 @@ export default function LeadDetails() {
     }
   };
 
+  const propertyTypeStyles = {
+    land: "border-green-500 bg-green-50",
+    plot: " border-indigo-500 bg-indigo-50",
+    house: "border-blue-600 bg-blue-50",
+    flat: "border-purple-600 bg-purple-50",
+    commercial: "border-amber-500 bg-amber-50",
+    villa: "border-pink-500 bg-pink-50",
+    apartment: "border-yellow-200 bg-yellow-50",
+    default: "border-gray-300 bg-muted/30",
+  };
+
   const statusMap = Object.fromEntries(statuses.map((s) => [s.id, s]));
 
   if (!lead) {
@@ -172,7 +272,7 @@ export default function LeadDetails() {
         {/* LEFT */}
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold break-words">
-            {lead.company_name}
+            {lead.contact_person}
           </h1>
           <p className="text-sm text-muted-foreground">Lead Details Overview</p>
         </div>
@@ -226,25 +326,9 @@ export default function LeadDetails() {
       </div>
 
       {/* COMPANY + CONTACT */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* COMPANY */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 flex-wrap">
-              Description Info
-              {role === "admin" && lead?.source && <Badge>{lead?.source}</Badge>}
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-2">
-            <p className="text-xs text-muted-foreground break-words">
-              {lead?.enquiry_description || "No description"}
-            </p>
-          </CardContent>
-        </Card>
-
+      <div className="flex flex-col md:flex-row gap-4 w-full">
         {/* CONTACT */}
-        <Card>
+        <Card className={"md:w-1/3"}>
           <CardHeader className={"flex flex-row justify-between"}>
             <CardTitle>Contact Info</CardTitle>
             <p className="text-xs text-gray-500 whitespace-nowrap">
@@ -274,6 +358,130 @@ export default function LeadDetails() {
             <p className="font-medium break-words">
               <b>Address:</b> {lead?.company_name}
             </p>
+          </CardContent>
+        </Card>
+
+        {/* COMPANY */}
+        <Card className={"md:w-2/3 w"}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              Description Info
+              {role === "admin" && lead?.source && (
+                <Badge>{lead?.source}</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {/* Enquiry Description */}
+            <p className="text-xs text-muted-foreground break-words">
+              {lead?.enquiry_description || "No description"}
+            </p>
+
+            <div className="pt-3 border-t">
+              <div className="flex justify-between">
+                <h4 className="text-sm font-semibold mb-2">
+                  Property Requirements
+                </h4>
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => openNeedsModal(lead?.lead_id)}
+                >
+                  <FaQuestionCircle /> Add Needs
+                </Button>
+              </div>
+              {lead?.needs && lead.needs.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                  {lead.needs.map((need) => {
+                    const typeKey = (need.property_type || "")
+                      .toLowerCase()
+                      .trim();
+
+                    const style =
+                      propertyTypeStyles[typeKey] || propertyTypeStyles.default;
+
+                    return (
+                      <div
+                        key={need.id}
+                        className={`border-l-4 rounded-lg p-3 shadow-sm ${style}`}
+                      >
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-2">
+                          <Badge>{need.place?.name || "N/A"}</Badge>
+
+                          {need.property_type && (
+                            <Badge className="capitalize" variant="outline">
+                              {need.property_type}
+                            </Badge>
+                          )}
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              onClick={() => openNeedsModal(lead.lead_id, need)}
+                            >
+                              <MdEdit className="w-4 h-4 text-blue-600" />
+                            </Button>
+                            {role === "admin" && (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="destructive"
+                                  onClick={() => deleteNeed(need.id)}
+                                >
+                                  <MdDelete className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Area */}
+                        {(need.min_area || need.max_area) && (
+                          <p className="text-xs text-muted-foreground">
+                            <strong>Area:</strong>{" "}
+                            {parseFloat(need.min_area) || "--"} -{" "}
+                            {parseFloat(need.max_area) || "--"} {need.area_unit}
+                          </p>
+                        )}
+
+                        {/* Budget */}
+                        {(need.min_budget || need.max_budget) && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <strong>Budget:</strong>{" "}
+                            {Number(need?.min_budget || "--").toLocaleString(
+                              "en-IN",
+                            )}{" "}
+                            - ₹
+                            {Number(need?.max_budget || "--").toLocaleString(
+                              "en-IN",
+                            )}
+                            {" Lakhs"}
+                          </p>
+                        )}
+
+                        {/* Description */}
+                        {need.description && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <strong>Note:</strong> {need.description}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {lead?.needs?.length === 0 && (
+                <div className="pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    No property requirements added.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Empty State */}
           </CardContent>
         </Card>
       </div>
@@ -574,6 +782,112 @@ export default function LeadDetails() {
 
             <Button onClick={addStatus}>Save Status</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* NEEDS MODAL */}
+      <Dialog open={needsOpen} onOpenChange={setNeedsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle>
+            <DialogHeader>
+              {editingNeedId
+                ? "Edit Property Requirement"
+                : "Add Property Requirement"}
+            </DialogHeader>
+          </DialogTitle>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Place */}
+            <select
+              className="border p-2 rounded w-full"
+              value={needForm.place_id}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, place_id: e.target.value })
+              }
+            >
+              <option value="">Select Place</option>
+              {places.map((place) => (
+                <option key={place.id} value={place.id}>
+                  {place.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Property Type */}
+            <select
+              className="border p-2 rounded w-full"
+              value={needForm.property_type}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, property_type: e.target.value })
+              }
+            >
+              <option value="">Property Type</option>
+              <option value="Land">Land</option>
+              <option value="Plot">Plot</option>
+              <option value="House">House</option>
+              <option value="Flat">Flat</option>
+              <option value="Commercial">Commercial</option>
+            </select>
+
+            <Input
+              placeholder="Min Area"
+              value={needForm.min_area}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, min_area: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Max Area"
+              value={needForm.max_area}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, max_area: e.target.value })
+              }
+            />
+
+            <select
+              className="border p-2 rounded w-full"
+              value={needForm.area_unit}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, area_unit: e.target.value })
+              }
+            >
+              <option value="sqft">Sq Ft</option>
+              <option value="sqyd">Sq Yard</option>
+              <option value="acre">Acre</option>
+              <option value="katha">Katha</option>
+              <option value="bigha">Bigha</option>
+            </select>
+
+            <Input
+              placeholder="Min Budget in Lakhs"
+              value={needForm.min_budget}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, min_budget: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Max Budget in Lakhs"
+              value={needForm.max_budget}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, max_budget: e.target.value })
+              }
+            />
+          </div>
+
+          <textarea
+            className="border p-2 rounded w-full mt-2"
+            placeholder="Additional Requirements"
+            value={needForm.description}
+            onChange={(e) =>
+              setNeedForm({ ...needForm, description: e.target.value })
+            }
+          />
+
+          <Button className="w-full mt-3" onClick={saveNeed}>
+            {editingNeedId ? "Update Requirement" : "Save Requirement"}
+          </Button>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

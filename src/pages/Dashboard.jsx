@@ -108,9 +108,7 @@ export default function Dashboard() {
     }
   };
 
-  const statusMap = Object.fromEntries(
-    statuses.map((s) => [s.id, s])
-  );
+  const statusMap = Object.fromEntries(statuses.map((s) => [s.id, s]));
 
   if (loading) {
     return (
@@ -143,15 +141,13 @@ export default function Dashboard() {
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Leads */}
-        <Card>
+        <Card onClick={() => navigate(`/leads`)} className={"cursor-pointer"}>
           <CardContent className="p-5 flex justify-between items-center">
             <div>
               <p className="text-sm text-muted-foreground">
                 {role === "admin" ? "Total Leads" : "My Leads"}
               </p>
-              <h2 className="text-2xl font-bold">
-                {stats1.total_leads}
-              </h2>
+              <h2 className="text-2xl font-bold">{stats1.total_leads}</h2>
             </div>
             <div className="bg-blue-100 text-blue-600 p-3 rounded-xl">
               <Users size={20} />
@@ -160,15 +156,11 @@ export default function Dashboard() {
         </Card>
 
         {/* Today's Leads */}
-        <Card>
+        <Card onClick={() => navigate(`/leads`)} className={"cursor-pointer"}>
           <CardContent className="p-5 flex justify-between items-center">
             <div>
-              <p className="text-sm text-muted-foreground">
-                Today's Leads
-              </p>
-              <h2 className="text-2xl font-bold">
-                {stats1.today_leads}
-              </h2>
+              <p className="text-sm text-muted-foreground">Today's Leads</p>
+              <h2 className="text-2xl font-bold">{stats1.today_leads}</h2>
             </div>
             <div className="bg-yellow-100 text-yellow-600 p-3 rounded-xl">
               📅
@@ -177,32 +169,26 @@ export default function Dashboard() {
         </Card>
 
         {/* Weekly Leads */}
-        <Card>
+        <Card onClick={() => navigate(`/leads`)} className={"cursor-pointer"}>
           <CardContent className="p-5 flex justify-between items-center">
             <div>
               <p className="text-sm text-muted-foreground">
-                Weekly Leads
+                Weekly Leads Counts
               </p>
-              <h2 className="text-2xl font-bold">
-                {stats1.weekly_leads}
-              </h2>
+              <h2 className="text-2xl font-bold">{stats1.weekly_leads}</h2>
             </div>
-            <div className="bg-green-100 text-green-600 p-3 rounded-xl">
-              📈
-            </div>
+            <div className="bg-green-100 text-green-600 p-3 rounded-xl">📈</div>
           </CardContent>
         </Card>
 
         {/* Monthly Leads */}
-        <Card>
+        <Card onClick={() => navigate(`/leads`)} className={"cursor-pointer"}>
           <CardContent className="p-5 flex justify-between items-center">
             <div>
               <p className="text-sm text-muted-foreground">
-                Monthly Leads
+                Monthly Leads Counts
               </p>
-              <h2 className="text-2xl font-bold">
-                {stats1.monthly_leads}
-              </h2>
+              <h2 className="text-2xl font-bold">{stats1.monthly_leads}</h2>
             </div>
             <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
               📊
@@ -210,25 +196,38 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
+      <div className="my-6">
+        <h1 className="text-xl md:text-2xl font-semibold">
+          Today's Status Counts
+        </h1>
+      </div>
       {/* STATUS-WISE STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
         {stats1.status_counts.map((status) => (
-          <Card key={status.status_id}>
+          <Card
+            key={status.status_id}
+            onClick={() =>
+              navigate(
+                `/leads?${new URLSearchParams({
+                  status: status.status_name,
+                }).toString()}`,
+              )
+            }
+            className={"cursor-pointer"}
+          >
             <CardContent className="p-5 flex justify-between items-center">
               <div>
                 <Badge
-                style={{
-                      backgroundColor: status.status_color + "33",
-                      color: status.status_color,
-                    }}  className="text-sm ">
-                  {status.status_name}
+                  style={{
+                    backgroundColor: status?.status_color + "33",
+                    color: status?.status_color,
+                  }}
+                  className="text-sm "
+                >
+                  {status?.status_name}
                 </Badge>
-                <h2 className="text-2xl font-bold mt-2">
-                  {status.count}
-                </h2>
+                <h2 className="text-2xl font-bold mt-2">{status?.count}</h2>
               </div>
-              
             </CardContent>
           </Card>
         ))}
@@ -244,39 +243,31 @@ export default function Dashboard() {
 
           <CardContent className="space-y-3">
             {recentLeads.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No leads found
-              </p>
+              <p className="text-sm text-muted-foreground">No leads found</p>
             ) : (
               recentLeads.map((lead) => (
                 <div
                   key={lead.lead_id}
                   className="flex justify-between border-b p-2 rounded-xl hover:cursor-pointer hover:bg-gray-50"
-                  onClick={() =>
-                    navigate(`/leads/${lead.lead_id}`)
-                  }
+                  onClick={() => navigate(`/leads/${lead.lead_id}`)}
                 >
                   <div>
-                    <p className="font-medium text-sm">
-                      {lead.company_name || "N/A"}
+                    <p className=" font-medium text-sm ">
+                      {lead?.contact_person} | {lead?.phone_number}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {lead.contact_person} | {lead.phone_number}
+                      {lead.company_name || "N/A"}
                     </p>
                   </div>
                   <div className="flex gap-3">
-                    {lead.latest_status &&
+                    {lead?.latest_status &&
                       (() => {
-                        const status =
-                          statusMap[
-                            lead.latest_status.status_id
-                          ];
+                        const status = statusMap[lead?.latest_status.status_id];
                         return (
                           <Badge
                             style={{
                               color: status?.color,
-                              backgroundColor:
-                                status?.color + "33",
+                              backgroundColor: status?.color + "33",
                             }}
                           >
                             {status?.name}
@@ -305,10 +296,7 @@ export default function Dashboard() {
                   <Tooltip />
                   <Bar dataKey="total_leads" fill="#3b82f6" />
                   <Bar dataKey="total_calls" fill="#10b981" />
-                  <Bar
-                    dataKey="closed_ordered"
-                    fill="#a855f7"
-                  />
+                  <Bar dataKey="closed_ordered" fill="#a855f7" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

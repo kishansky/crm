@@ -4,24 +4,30 @@ import api from "../api/axios";
 import toast from "react-hot-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FaWhatsapp } from "react-icons/fa";
+import { FaQuestionCircle, FaWhatsapp } from "react-icons/fa";
 import { PhoneIcon } from "lucide-react";
 import { MdAssignmentInd, MdDelete } from "react-icons/md";
+import { Input } from "@/components/ui/input";
 
 export default function FollowUps() {
   const [leads, setLeads] = useState([]);
   const [sales, setSales] = useState([]);
   const [statuses, setStatuses] = useState([]);
 
-  const [filter, setFilter] = useState("today");
-  const [page, setPage] = useState(1);
+  // ✅ URL Pagination & Filter
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isUrlSyncingRef = useRef(false);
+
+  const [filter, setFilter] = useState(searchParams.get("filter") || "today");
+  const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
   const [lastPage, setLastPage] = useState(1);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [selectedLeads, setSelectedLeads] = useState([]);
@@ -40,17 +46,108 @@ export default function FollowUps() {
   });
 
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
   const role = localStorage.getItem("role");
   const user = JSON.parse(localStorage.getItem("user"));
+
+  // ================================
+  // SYNC STATE FROM URL
+  // ================================
+  useEffect(() => {
+    isUrlSyncingRef.current = true;
+
+    const urlFilter = searchParams.get("filter") || "today";
+    const urlPage = parseInt(searchParams.get("page")) || 1;
+
+    setFilter(urlFilter);
+    setPage(urlPage);
+
+    setTimeout(() => {
+      isUrlSyncingRef.current = false;
+    }, 0);
+  }, [searchParams]);
+
+  // ================================
+  // SYNC URL FROM STATE
+  // ================================
+  useEffect(() => {
+    if (isUrlSyncingRef.current) return;
+
+    const params = new URLSearchParams();
+
+    if (filter && filter !== "today") {
+      params.set("filter", filter);
+    }
+
+    if (page > 1) {
+      params.set("page", page);
+    }
+
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [filter, page, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (role === "admin") {
       fetchSales();
     }
     fetchStatuses();
+    fetchPlaces();
   }, []);
+
+  // ===============================
+  // PLACES & NEEDS STATE
+  // ===============================
+  const [places, setPlaces] = useState([]);
+  const [needsOpen, setNeedsOpen] = useState(false);
+  const [needForm, setNeedForm] = useState({
+    lead_id: "",
+    place_id: "",
+    property_type: "",
+    min_area: "",
+    max_area: "",
+    area_unit: "sqft",
+    min_budget: "",
+    max_budget: "",
+    description: "",
+  });
+
+  const fetchPlaces = async () => {
+    try {
+      const res = await api.get("/places-list");
+      setPlaces(res.data);
+    } catch (error) {
+      toast.error("Failed to load places");
+    }
+  };
+
+  const openNeedsModal = (leadId) => {
+    setNeedForm({
+      lead_id: leadId,
+      place_id: "",
+      property_type: "",
+      min_area: "",
+      max_area: "",
+      area_unit: "sqft",
+      min_budget: "",
+      max_budget: "",
+      description: "",
+    });
+    setNeedsOpen(true);
+  };
+
+  const saveNeed = async () => {
+    try {
+      await api.post("/needs", needForm);
+      toast.success("Need added successfully");
+      setNeedsOpen(false);
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Failed to save requirement",
+      );
+    }
+  };
 
   useEffect(() => {
     fetchFollowUps();
@@ -65,7 +162,12 @@ export default function FollowUps() {
     try {
       setLoading(true);
 
-      const res = await api.get(`/follow-ups?filter=${filter}&page=${page}`);
+      const params = new URLSearchParams({
+        filter,
+        page,
+      });
+
+      const res = await api.get(`/follow-ups?${params.toString()}`);
 
       setLeads(res.data.data);
       setLastPage(res.data.last_page);
@@ -150,7 +252,7 @@ export default function FollowUps() {
       toast.success("Deleted successfully 🚀");
 
       setSelectedLeads([]);
-      fetchFollowUps(page);
+      fetchFollowUps();
     } catch {
       toast.error("Delete failed ❌");
     }
@@ -173,7 +275,7 @@ export default function FollowUps() {
       setSelectedLeads([]);
       setAssignUser("");
 
-      fetchFollowUps(page);
+      fetchFollowUps();
     } catch {
       toast.error("Assignment failed ❌");
     }
@@ -287,8 +389,6 @@ export default function FollowUps() {
               </tr>
             ) : (
               leads.map((lead) => {
-                const status = statusMap[lead.latest_status?.status_id];
-
                 return (
                   <tr
                     key={lead.lead_id}
@@ -338,7 +438,7 @@ export default function FollowUps() {
 
                     {/* STATUS */}
                     <td className="p-3 min-w-[100px]">
-                      {lead?.latest_status &&
+                      {lead?.latest_status ? (
                         (() => {
                           const status =
                             statusMap[lead.latest_status.status_id];
@@ -354,7 +454,18 @@ export default function FollowUps() {
                               {status?.name}
                             </Badge>
                           );
-                        })()}
+                        })()
+                      ) : (
+                        <Badge
+                          style={{
+                            color: "#FF0000 ",
+                            backgroundColor: "#FF0000" + "33",
+                          }}
+                          className={"text-xs"}
+                        >
+                          New
+                        </Badge>
+                      )}
                     </td>
 
                     {/* FOLLOW-UP */}
@@ -381,7 +492,7 @@ export default function FollowUps() {
                           </div>
                         </>
                       ) : (
-                        "-"
+                        "--/--/--"
                       )}
                     </td>
 
@@ -441,6 +552,13 @@ export default function FollowUps() {
                         }}
                       >
                         + Status
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={() => openNeedsModal(lead?.lead_id)}
+                      >
+                        <FaQuestionCircle />
                       </Button>
                     </td>
                   </tr>
@@ -518,14 +636,27 @@ export default function FollowUps() {
                   </h3>
                 </div>
 
-                <Badge
-                  style={{
-                    color: status?.color,
-                    backgroundColor: status?.color + "33",
-                  }}
-                >
-                  {status?.name}
-                </Badge>
+                {lead?.latest_status ? (
+                  <Badge
+                    style={{
+                      color: status?.color,
+                      backgroundColor: status?.color + "33",
+                    }}
+                    className={"text-xs"}
+                  >
+                    {status?.name}
+                  </Badge>
+                ) : (
+                  <Badge
+                    style={{
+                      color: "#FF0000 ",
+                      backgroundColor: "#FF0000" + "33",
+                    }}
+                    className={"text-xs"}
+                  >
+                    New
+                  </Badge>
+                )}
               </div>
 
               {/* PHONE */}
@@ -636,6 +767,13 @@ export default function FollowUps() {
                   }}
                 >
                   + Status
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={() => openNeedsModal(lead?.lead_id)}
+                >
+                  <FaQuestionCircle />
                 </Button>
               </div>
             </div>
@@ -765,6 +903,108 @@ export default function FollowUps() {
 
           <Button onClick={bulkAssign} className="w-full mt-3">
             Assign
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* NEEDS MODAL */}
+      <Dialog open={needsOpen} onOpenChange={setNeedsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Property Requirement</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Place */}
+            <select
+              className="border p-2 rounded w-full"
+              value={needForm.place_id}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, place_id: e.target.value })
+              }
+            >
+              <option value="">Select Place</option>
+              {places.map((place) => (
+                <option key={place.id} value={place.id}>
+                  {place.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Property Type */}
+            <select
+              className="border p-2 rounded w-full"
+              value={needForm.property_type}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, property_type: e.target.value })
+              }
+            >
+              <option value="">Property Type</option>
+              <option value="Land">Land</option>
+              <option value="Plot">Plot</option>
+              <option value="House">House</option>
+              <option value="Flat">Flat</option>
+              <option value="Commercial">Commercial</option>
+            </select>
+
+            <Input
+              placeholder="Min Area"
+              value={needForm.min_area}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, min_area: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Max Area"
+              value={needForm.max_area}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, max_area: e.target.value })
+              }
+            />
+
+            <select
+              className="border p-2 rounded w-full"
+              value={needForm.area_unit}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, area_unit: e.target.value })
+              }
+            >
+              <option value="sqft">Sq Ft</option>
+              <option value="sqyd">Sq Yard</option>
+              <option value="acre">Acre</option>
+              <option value="katha">Kata</option>
+              <option value="bigha">Bigha</option>
+            </select>
+
+            <Input
+              placeholder="Min Budget in Lakhs"
+              value={needForm.min_budget}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, min_budget: e.target.value })
+              }
+            />
+
+            <Input
+              placeholder="Max Budget in Lakhs"
+              value={needForm.max_budget}
+              onChange={(e) =>
+                setNeedForm({ ...needForm, max_budget: e.target.value })
+              }
+            />
+          </div>
+
+          <textarea
+            className="border p-2 rounded w-full mt-2"
+            placeholder="Additional Requirements"
+            value={needForm.description}
+            onChange={(e) =>
+              setNeedForm({ ...needForm, description: e.target.value })
+            }
+          />
+
+          <Button className="w-full mt-3" onClick={saveNeed}>
+            Save Requirement
           </Button>
         </DialogContent>
       </Dialog>
