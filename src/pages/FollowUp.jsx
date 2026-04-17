@@ -15,6 +15,12 @@ import { FaQuestionCircle, FaWhatsapp } from "react-icons/fa";
 import { PhoneIcon } from "lucide-react";
 import { MdAssignmentInd, MdDelete } from "react-icons/md";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import FormatDate from "@/components/FormatDate";
 
 export default function FollowUps() {
   const [leads, setLeads] = useState([]);
@@ -26,7 +32,12 @@ export default function FollowUps() {
   const navigate = useNavigate();
   const isUrlSyncingRef = useRef(false);
 
-  const [filter, setFilter] = useState(searchParams.get("filter") || "today");
+  const initialFilter = searchParams.get("filter");
+  const initialCallStatus = searchParams.get("call_status");
+
+  const [filter, setFilter] = useState(
+    initialCallStatus ? "" : initialFilter || "today",
+  );
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
   const [lastPage, setLastPage] = useState(1);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
@@ -50,43 +61,59 @@ export default function FollowUps() {
   const role = localStorage.getItem("role");
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // ================================
-  // SYNC STATE FROM URL
-  // ================================
+  const [filters, setFilters] = useState({
+    search: searchParams.get("search") || "",
+    source: searchParams.get("source") || "",
+    status: searchParams.get("status") || "",
+    assigned_to: searchParams.get("assigned_to") || "",
+    place_id: searchParams.get("place_id") || "",
+  });
+
   useEffect(() => {
     isUrlSyncingRef.current = true;
 
-    const urlFilter = searchParams.get("filter") || "today";
-    const urlPage = parseInt(searchParams.get("page")) || 1;
+    const urlFilter = searchParams.get("filter");
+    const urlCallStatus = searchParams.get("call_status");
 
-    setFilter(urlFilter);
-    setPage(urlPage);
+    // Prevent "today" from overriding call_status
+    setFilter(urlCallStatus ? "" : urlFilter || "today");
+    setPage(parseInt(searchParams.get("page")) || 1);
+
+    setFilters({
+      search: searchParams.get("search") || "",
+      source: searchParams.get("source") || "",
+      status: searchParams.get("status") || "",
+      assigned_to: searchParams.get("assigned_to") || "",
+      place_id: searchParams.get("place_id") || "",
+      call_status: urlCallStatus || "",
+    });
 
     setTimeout(() => {
       isUrlSyncingRef.current = false;
     }, 0);
   }, [searchParams]);
 
-  // ================================
-  // SYNC URL FROM STATE
-  // ================================
   useEffect(() => {
     if (isUrlSyncingRef.current) return;
 
     const params = new URLSearchParams();
 
-    if (filter && filter !== "today") {
+    // Do not send filter when call_status is active
+    if (filter && filter !== "today" && !filters.call_status) {
       params.set("filter", filter);
     }
 
-    if (page > 1) {
-      params.set("page", page);
-    }
+    if (page > 1) params.set("page", page);
 
-    if (params.toString() !== searchParams.toString()) {
-      setSearchParams(params, { replace: true });
-    }
-  }, [filter, page, searchParams, setSearchParams]);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.source) params.set("source", filters.source);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.assigned_to) params.set("assigned_to", filters.assigned_to);
+    if (filters.place_id) params.set("place_id", filters.place_id);
+    if (filters.call_status) params.set("call_status", filters.call_status);
+
+    setSearchParams(params, { replace: true });
+  }, [filter, page, filters, setSearchParams]);
 
   useEffect(() => {
     if (role === "admin") {
@@ -151,7 +178,7 @@ export default function FollowUps() {
 
   useEffect(() => {
     fetchFollowUps();
-  }, [filter, page]);
+  }, [filter, page, filters]);
 
   const fetchSales = async () => {
     const res = await api.get("/sales-team");
@@ -165,10 +192,15 @@ export default function FollowUps() {
       const params = new URLSearchParams({
         filter,
         page,
+        search: filters.search || "",
+        source: filters.source || "",
+        status: filters.status || "",
+        assigned_to: filters.assigned_to || "",
+        place_id: filters.place_id || "",
+        call_status: filters.call_status || "",
       });
 
       const res = await api.get(`/follow-ups?${params.toString()}`);
-
       setLeads(res.data.data);
       setLastPage(res.data.last_page);
     } catch {
@@ -221,6 +253,7 @@ export default function FollowUps() {
     { key: "week", label: "This Week", icon: "📆" },
     { key: "upcoming", label: "Upcoming", icon: "⏳" },
     { key: "all", label: "All", icon: "📋" },
+    { key: "call_status", label: "Call Status", icon: "📞" },
   ];
 
   const selectAllRef = useRef(null);
@@ -284,25 +317,124 @@ export default function FollowUps() {
   return (
     <DashboardLayout>
       {/* HEADER */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {filtersList.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => {
-              setFilter(f.key);
+      <div className="flex flex-col">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-4">
+          <Input
+            placeholder="Search..."
+            className="w-full sm:w-48 bg-white/90 h-9 mt-0"
+            value={filters.search}
+            onChange={(e) => {
+              setFilters({ ...filters, search: e.target.value });
               setPage(1);
             }}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm border transition-all
-        ${
-          filter === f.key
-            ? "bg-blue-500 text-white border-blue-500 shadow"
-            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100"
-        }`}
+          />
+
+          <select
+            className="w-full sm:w-40 border rounded-md h-9 text-sm bg-white/90 px-2"
+            value={filters.source}
+            onChange={(e) => {
+              setFilters({ ...filters, source: e.target.value });
+              setPage(1);
+            }}
           >
-            <span>{f.icon}</span>
-            {f.label}
-          </button>
-        ))}
+            <option value="">All Sources</option>
+            <option value="website">Website</option>
+            <option value="facebook">Facebook</option>
+            <option value="whatsapp">Whatsapp</option>
+            <option value="instragram">Instragram</option>
+            <option value="linkedin">Linkedin</option>
+            <option value="google">Google</option>
+          </select>
+
+          <select
+            className="w-full sm:w-52 border rounded-md h-9 text-sm bg-white/90 px-2"
+            value={filters.status}
+            onChange={(e) => {
+              setFilters({ ...filters, status: e.target.value });
+              setPage(1);
+            }}
+          >
+            <option value="">All Status</option>
+            {statuses.map((s) => (
+              <option key={s?.id} value={s?.name}>
+                {s?.name}
+              </option>
+            ))}
+          </select>
+
+          {role === "admin" && (
+            <select
+              className="w-full sm:w-40 border rounded-md h-9 text-sm bg-white/90 px-2"
+              value={filters.assigned_to}
+              onChange={(e) => {
+                setFilters({ ...filters, assigned_to: e.target.value });
+                setPage(1);
+              }}
+            >
+              <option value="">All Sales</option>
+              {sales.map((s) => (
+                <option key={s.sales_person_id} value={s.sales_person_id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            className="w-full sm:w-44 border rounded-md h-9 text-sm bg-white/90 px-2"
+            value={filters.place_id}
+            onChange={(e) => {
+              setFilters({ ...filters, place_id: e.target.value });
+              setPage(1);
+            }}
+          >
+            <option value="">All Places</option>
+            {places.map((place) => (
+              <option key={place.id} value={place.id}>
+                {place.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Follow-Up Filter Buttons */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {filtersList.map((f) => {
+            const isActive =
+              f.key === "call_status"
+                ? !!filters.call_status
+                : filter === f.key && !filters.call_status;
+
+            return (
+              <button
+                key={f.key}
+                onClick={() => {
+                  if (f.key === "call_status") {
+                    setFilter("");
+                    setFilters((prev) => ({
+                      ...prev,
+                      call_status: 6,
+                    }));
+                  } else {
+                    setFilter(f.key);
+                    setFilters((prev) => ({
+                      ...prev,
+                      call_status: "",
+                    }));
+                  }
+                  setPage(1);
+                }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm border ${
+                  isActive
+                    ? "bg-blue-500 text-white border-blue-500 shadow"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                <span>{f.icon}</span>
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="flex flex-col sm:flex-row items-end w-full sm:items-center sm:justify-between gap-2 mb-2">
         {/* LEFT: Bulk actions */}
@@ -368,7 +500,7 @@ export default function FollowUps() {
               <th className="p-3 text-left">Phone</th>
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">Follow-Up</th>
-              <th className="p-3 text-left">Shift</th>
+              {/* <th className="p-3 text-left">Shift</th> */}
               {role === "admin" && <th className="p-3 text-left">Assigned</th>}
               <th className="p-3 text-center">Action</th>
             </tr>
@@ -423,10 +555,15 @@ export default function FollowUps() {
                       </td>
                     )}
                     {/* PERSON */}
-                    <td className="p-3">{lead?.contact_person}</td>
+                    <td className="p-3">
+                      {lead?.contact_person}
+                      <p className="text-xs text-gray-500 whitespace-nowrap">
+                        <FormatDate date={lead?.created_at} />
+                      </p>
+                    </td>
 
                     {/* PHONE */}
-                    <td className="p-3">
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
                       <a
                         href={`tel:${lead?.phone_number}`}
                         onClick={(e) => e.stopPropagation()}
@@ -434,54 +571,149 @@ export default function FollowUps() {
                       >
                         {lead?.phone_number}
                       </a>
+                      <p>
+                        <a
+                          href={`mailto:${lead?.email}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {lead?.email}
+                        </a>
+                      </p>
                     </td>
 
                     {/* STATUS */}
-                    <td className="p-3 min-w-[100px]">
-                      {lead?.latest_status ? (
-                        (() => {
-                          const status =
-                            statusMap[lead.latest_status.status_id];
+                    <td className="p-3 max-w-[260px]">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex flex-col gap-1 cursor-pointer">
+                            {/* Latest Status */}
+                            {lead?.latest_status ? (
+                              (() => {
+                                const status =
+                                  statusMap[lead?.latest_status?.status_id];
 
-                          return (
-                            <Badge
-                              style={{
-                                color: status?.color,
-                                backgroundColor: status?.color + "33",
-                              }}
-                              className={"text-xs"}
-                            >
-                              {status?.name}
-                            </Badge>
-                          );
-                        })()
-                      ) : (
-                        <Badge
-                          style={{
-                            color: "#FF0000 ",
-                            backgroundColor: "#FF0000" + "33",
-                          }}
-                          className={"text-xs"}
-                        >
-                          New
-                        </Badge>
-                      )}
+                                return (
+                                  <Badge
+                                    style={{
+                                      color: status?.color || "#6b7280",
+                                      backgroundColor: status?.color
+                                        ? `${status.color}33`
+                                        : "#e5e7eb",
+                                    }}
+                                    className="text-xs w-fit"
+                                  >
+                                    {status?.name || "Unknown"}
+                                  </Badge>
+                                );
+                              })()
+                            ) : (
+                              <Badge
+                                style={{
+                                  color: "#FF0000 ",
+                                  backgroundColor: "#FF0000" + "33",
+                                }}
+                                className={"text-xs"}
+                              >
+                                New
+                              </Badge>
+                            )}
+
+                            {/* Places Summary */}
+                            {lead?.needs?.length > 0 && (
+                              <Badge className="bg-purple-600 text-white text-xs w-fit">
+                                {[
+                                  ...new Set(
+                                    lead.needs
+                                      .map((need) => need.place?.name)
+                                      .filter(Boolean),
+                                  ),
+                                ].join(" | ")}
+                              </Badge>
+                            )}
+                          </div>
+                        </TooltipTrigger>
+
+                        {/* Tooltip Content */}
+                        <TooltipContent className="max-w-sm bg-purple-500 py-4">
+                          <div className="space-y-3 text-xs">
+                            <p className="font-semibold text-sm">
+                              Property Requirements
+                            </p>
+
+                            {lead?.needs?.length > 0 ? (
+                              lead.needs.map((need) => (
+                                <div
+                                  key={need.id}
+                                  className="border rounded-md p-1  bg-gray-50 text-black"
+                                >
+                                  <p>
+                                    <strong>{need.place?.name || "N/A"}</strong>
+                                    {" ("}
+                                    {need.property_type || "N/A"}
+                                    {")"}
+                                  </p>
+
+                                  <p>
+                                    {need.min_area && (
+                                      <strong>
+                                        {need.min_area || "--"} -{" "}
+                                        {need.max_area || "--"} {need.area_unit}
+                                      </strong>
+                                    )}
+                                  </p>
+                                  <p>
+                                    {need.min_budget && (
+                                      <strong>
+                                        {Number(
+                                          need.min_budget || 0,
+                                        ).toLocaleString("en-IN")}{" "}
+                                        - ₹
+                                        {Number(
+                                          need.max_budget || 0,
+                                        ).toLocaleString("en-IN")}
+                                        {" Lakhs"}
+                                      </strong>
+                                    )}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-gray-200">
+                                No requirements available.
+                              </p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
                     </td>
 
                     {/* FOLLOW-UP */}
                     <td className="p-3">
                       {lead?.latest_status?.reschedule_time ? (
                         <>
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 font-medium">
-                              📅{" "}
-                              {new Date(
-                                lead?.latest_status?.reschedule_time,
-                              ).toLocaleDateString()}
-                            </span>
+                          <div className="flex flex-col items-start gap-2 mt-2 flex-wrap">
+                            <div>
+                              <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 font-medium">
+                                {" "}
+                                {new Date(
+                                  lead?.latest_status?.reschedule_time,
+                                ).toLocaleDateString()}
+                              </span>
+                              <span
+                                className={`text-xs px-2 py-1 rounded capitalize font-medium ${
+                                  lead?.latest_status?.shift === "morning"
+                                    ? "bg-yellow-50 text-yellow-600"
+                                    : lead?.latest_status?.shift === "noon"
+                                      ? "bg-orange-50 text-orange-600"
+                                      : "bg-purple-50 text-purple-600"
+                                }`}
+                              >
+                                {lead?.latest_status?.shift || "--"}
+                              </span>
+                            </div>
                             {/* TIME */}
                             <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 font-medium">
-                              ⏰{" "}
+                              {" "}
                               {new Date(
                                 lead?.latest_status?.reschedule_time,
                               ).toLocaleTimeString([], {
@@ -496,23 +728,14 @@ export default function FollowUps() {
                       )}
                     </td>
 
-                    {/* SHIFT */}
-                    <td className="p-3 capitalize">
-                      <span
-                        className={`text-xs px-2 py-1 rounded capitalize font-medium ${
-                          lead?.latest_status?.shift === "morning"
-                            ? "bg-yellow-50 text-yellow-600"
-                            : lead?.latest_status?.shift === "noon"
-                              ? "bg-orange-50 text-orange-600"
-                              : "bg-purple-50 text-purple-600"
-                        }`}
-                      >
-                        {lead?.latest_status?.shift || "--"}
-                      </span>
-                    </td>
-
                     {role === "admin" && (
-                      <td className="p-3">{lead.sales_person?.name}</td>
+                      <td className="p-3">
+                        {lead.sales_person?.name && (
+                          <Badge className={"bg-[#3E2C23] text-white"}>
+                            {lead.sales_person?.name}
+                          </Badge>
+                        )}
+                      </td>
                     )}
 
                     {/* ACTIONS */}

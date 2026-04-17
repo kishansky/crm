@@ -860,10 +860,13 @@ export default function Leads() {
                                 })()
                               ) : (
                                 <Badge
-                                  variant="outline"
-                                  className="text-xs w-fit text-gray-500"
+                                  style={{
+                                    color: "#FF0000 ",
+                                    backgroundColor: "#FF0000" + "33",
+                                  }}
+                                  className={"text-xs"}
                                 >
-                                  No Status
+                                  New
                                 </Badge>
                               )}
 
@@ -905,27 +908,28 @@ export default function Leads() {
                                     </p>
 
                                     <p>
-                                      {
-                                        need.min_area && <strong>
-                                        {need.min_area || "--"} -{" "}
-                                        {need.max_area || "--"} {need.area_unit}
-                                      </strong>
-                                      }
+                                      {need.min_area && (
+                                        <strong>
+                                          {need.min_area || "--"} -{" "}
+                                          {need.max_area || "--"}{" "}
+                                          {need.area_unit}
+                                        </strong>
+                                      )}
                                     </p>
                                     <p>
-                                      { need.min_budget && <strong>
-                                        {Number(
-                                          need.min_budget || 0,
-                                        ).toLocaleString("en-IN")}{" "}
-                                        - ₹
-                                        {Number(
-                                          need.max_budget || 0,
-                                        ).toLocaleString("en-IN")}
-                                        {" Lakhs"}
-                                      </strong>}
-                                      
+                                      {need.min_budget && (
+                                        <strong>
+                                          {Number(
+                                            need.min_budget || 0,
+                                          ).toLocaleString("en-IN")}{" "}
+                                          - ₹
+                                          {Number(
+                                            need.max_budget || 0,
+                                          ).toLocaleString("en-IN")}
+                                          {" Lakhs"}
+                                        </strong>
+                                      )}
                                     </p>
-                                    
                                   </div>
                                 ))
                               ) : (
@@ -943,7 +947,13 @@ export default function Leads() {
                           <td className="p-3">
                             {lead.source && <Badge>{lead?.source}</Badge>}
                           </td>
-                          <td className="p-3">{lead?.sales_person?.name}</td>
+                          <td className="p-3">
+                            {lead.sales_person?.name && (
+                              <Badge className={"bg-[#3E2C23] text-white"}>
+                                {lead.sales_person?.name}
+                              </Badge>
+                            )}
+                          </td>
                         </>
                       )}
 
@@ -1147,7 +1157,11 @@ export default function Leads() {
                         </p>
 
                         <p>
-                          <b>Assigned:</b> {lead?.sales_person?.name}
+                          <b>Assigned:</b> {lead.sales_person?.name && (
+                          <Badge className={"bg-[#3E2C23] text-white"}>
+                            {lead.sales_person?.name}
+                          </Badge>
+                        )}
                         </p>
                       </>
                     )}

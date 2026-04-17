@@ -364,11 +364,20 @@ export default function LeadDetails() {
         {/* COMPANY */}
         <Card className={"md:w-2/3 w"}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 flex-wrap">
-              Description Info
-              {role === "admin" && lead?.source && (
-                <Badge>{lead?.source}</Badge>
-              )}
+            <CardTitle className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                Description Info
+                {role === "admin" && lead?.source && (
+                  <Badge>{lead?.source}</Badge>
+                )}
+              </div>
+              <div>
+                {role === "admin" && lead.sales_person?.name && (
+                  <Badge className={"bg-[#3E2C23] text-white"}>
+                    {lead.sales_person?.name}
+                  </Badge>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
 
