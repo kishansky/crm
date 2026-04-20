@@ -11,15 +11,24 @@ const TeamStatusReport = () => {
   const [data, setData] = useState([]);
   const [filter, setFilter] = useState("today");
   const [date, setDate] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   const fetchReport = async () => {
     try {
       setLoading(true);
+
       let url = `/team-status-report?filter=${filter}`;
+
       if (filter === "date" && date) {
         url += `&date=${date}`;
       }
+
+      if (filter === "range" && fromDate && toDate) {
+        url += `&from_date=${fromDate}&to_date=${toDate}`;
+      }
+
       const res = await api.get(url);
       setData(res.data.data);
     } catch (error) {
@@ -30,58 +39,102 @@ const TeamStatusReport = () => {
   };
 
   useEffect(() => {
+    if (filter === "date" && !date) return;
+    if (filter === "range" && (!fromDate || !toDate)) return;
+
     fetchReport();
-  }, [filter]);
+  }, [filter, date, fromDate, toDate]);
 
   const today = new Date().toISOString().split("T")[0];
 
   return (
     <DashboardLayout>
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {/* Today Button */}
+      <div className="flex sm:flex-row flex-col flex-wrap sm:items-center item-start gap-2 mb-4">
+        {/* Today */}
         <Button
           onClick={() => {
             setFilter("today");
             setDate("");
+            setFromDate("");
+            setToDate("");
           }}
-          className={`px-4 py-2 h-9 rounded-md transition ${
+          className={`px-4 py-2 h-9 rounded-md ${
             filter === "today"
               ? "bg-primary text-white shadow"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-gray-100 text-gray-700"
           }`}
         >
           Today
         </Button>
 
-        {/* Yesterday Button */}
+        {/* Yesterday */}
         <Button
           onClick={() => {
             setFilter("yesterday");
             setDate("");
+            setFromDate("");
+            setToDate("");
           }}
-          className={`px-4 py-2 h-9 rounded-md transition ${
+          className={`px-4 py-2 h-9 rounded-md ${
             filter === "yesterday"
               ? "bg-primary text-white shadow"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              : "bg-gray-100 text-gray-700"
           }`}
         >
           Yesterday
         </Button>
 
-        {/* Date Picker */}
+        {/* Single Date */}
+         Single Date :
         <input
           type="date"
-          className={`border rounded-md h-9 px-3 py-2 text-sm transition ${
+          className={`border rounded-md h-9 px-3 ${
             filter === "date"
               ? "border-primary ring-2 ring-primary/30"
               : "border-gray-300"
           }`}
-          value={date || today}
+          value={date || ""}
           max={today}
           onChange={(e) => {
             setDate(e.target.value);
             setFilter("date");
+            setFromDate("");
+            setToDate("");
+          }}
+        />
+
+        {/* 🔥 FROM DATE */}
+        From Date :
+        <input
+          type="date"
+          className={`border rounded-md h-9 px-3 ${
+            filter === "range"
+              ? "border-primary ring-2 ring-primary/30"
+              : "border-gray-300"
+          }`}
+          value={fromDate || ""}
+          max={today}
+          onChange={(e) => {
+            setFromDate(e.target.value);
+            setFilter("range");
+          }}
+        />
+
+        {/* 🔥 TO DATE */}
+        To Date :
+        <input
+          type="date"
+          className={`border rounded-md h-9 px-3 ${
+            filter === "range"
+              ? "border-primary ring-2 ring-primary/30"
+              : "border-gray-300"
+          }`}
+          value={toDate || ""}
+          max={today}
+          onChange={(e) => {
+            setToDate(e.target.value);
+            setFilter("range");
           }}
         />
       </div>
@@ -94,6 +147,7 @@ const TeamStatusReport = () => {
             <thead className="bg-muted">
               <tr>
                 <th className="p-3 text-left">Team Member</th>
+                <th className="p-3 text-left">Assigned Leads</th>
                 <th className="p-3 text-left">Statuses</th>
                 <th className="p-3 text-center">Total</th>
               </tr>
@@ -102,7 +156,10 @@ const TeamStatusReport = () => {
               {data.map((team, index) => (
                 <tr key={index} className="border-t hover:bg-muted/50">
                   <td className="p-3 font-medium">{team.team_member}</td>
-                  <td className="p-3">
+                  <td className="p-3 text-start font-bold">
+                    {team.assigned_leads}
+                  </td>
+                  <td className="p-3 ">
                     <div className="flex flex-wrap gap-2">
                       {team.statuses.map((status, idx) => (
                         <Badge

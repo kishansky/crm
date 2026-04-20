@@ -252,8 +252,9 @@ export default function Dashboard() {
                   onClick={() => navigate(`/leads/${lead.lead_id}`)}
                 >
                   <div>
-                    <p className=" font-medium text-sm ">
-                      {lead?.contact_person} | {lead?.phone_number}
+                    <p className="font-medium text-sm">
+                      {lead?.contact_person ? `${lead.contact_person} | ` : ""}
+                      {lead?.phone_number || "-"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {lead.company_name || "N/A"}

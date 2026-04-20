@@ -20,6 +20,12 @@ import { PhoneIcon } from "lucide-react";
 import { MdDelete, MdEdit } from "react-icons/md";
 import FormatDate from "@/components/FormatDate";
 
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+
 export default function LeadDetails() {
   const { id } = useParams();
   const [lead, setLead] = useState(null);
@@ -279,49 +285,129 @@ export default function LeadDetails() {
 
         {/* RIGHT ACTIONS */}
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          <Button
-            size="sm"
-            className="bg-blue-500 flex-1 sm:flex-none"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.location.href = `tel:${lead.phone_number}`;
-            }}
-          >
-            <PhoneIcon /> Phone
-          </Button>
+          {(() => {
+            const numbers = lead?.phone_number
+              ?.split(",")
+              .map((n) => n.trim())
+              .filter((n) => n);
 
-          <Button
-            size="sm"
-            className="bg-green-500 hover:bg-green-600 text-white flex-1 sm:flex-none"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(`https://wa.me/${lead.phone_number}`, "_blank");
-            }}
-          >
-            <FaWhatsapp size={16} /> WhatsApp
-          </Button>
+            const isMultiple = numbers?.length > 1;
 
-          {role === "admin" && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1 sm:flex-none"
-                onClick={() => openModal(lead)}
-              >
-                <MdEdit /> Edit
-              </Button>
+            return (
+              <>
+                {/* 📞 PHONE */}
+                {isMultiple ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600 text-white flex-1 sm:flex-none"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <PhoneIcon /> Phone
+                      </Button>
+                    </PopoverTrigger>
 
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1 sm:flex-none"
-                onClick={() => deleteLead(lead.lead_id)}
-              >
-                <MdDelete /> Delete
-              </Button>
-            </>
-          )}
+                    <PopoverContent className="w-56 p-2 rounded-xl shadow-xl">
+                      <p className="text-xs text-gray-500 mb-2 px-2">
+                        Choose number to call
+                      </p>
+
+                      {numbers.map((num, i) => (
+                        <div
+                          key={i}
+                          onClick={() => (window.location.href = `tel:${num}`)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-50 transition"
+                        >
+                          <PhoneIcon size={14} className="text-blue-500" />
+                          <span className="text-sm font-medium">{num}</span>
+                        </div>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-blue-500 hover:bg-blue-600 text-white flex-1 sm:flex-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.location.href = `tel:${numbers?.[0]}`;
+                    }}
+                  >
+                    <PhoneIcon /> Phone
+                  </Button>
+                )}
+
+                {/* 🟢 WHATSAPP */}
+                {isMultiple ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600 text-white flex-1 sm:flex-none"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <FaWhatsapp size={16} /> WhatsApp
+                      </Button>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-56 p-2 rounded-xl shadow-xl">
+                      <p className="text-xs text-gray-500 mb-2 px-2">
+                        Choose number for WhatsApp
+                      </p>
+
+                      {numbers.map((num, i) => (
+                        <div
+                          key={i}
+                          onClick={() =>
+                            window.open(`https://wa.me/${num}`, "_blank")
+                          }
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-green-50 transition"
+                        >
+                          <FaWhatsapp size={14} className="text-green-500" />
+                          <span className="text-sm font-medium">{num}</span>
+                        </div>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-green-500 hover:bg-green-600 text-white flex-1 sm:flex-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`https://wa.me/${numbers?.[0]}`, "_blank");
+                    }}
+                  >
+                    <FaWhatsapp size={16} /> WhatsApp
+                  </Button>
+                )}
+
+                {/* ✏️ EDIT + 🗑 DELETE */}
+                {role === "admin" && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 sm:flex-none"
+                      onClick={() => openModal(lead)}
+                    >
+                      <MdEdit /> Edit
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1 sm:flex-none"
+                      onClick={() => deleteLead(lead.lead_id)}
+                    >
+                      <MdDelete /> Delete
+                    </Button>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -343,13 +429,54 @@ export default function LeadDetails() {
 
             <p className="break-words">
               <b>Phone:</b>{" "}
-              <a
-                href={`tel:${lead?.phone_number}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-blue-500"
-              >
-                {lead?.phone_number || "-"}
-              </a>
+              {(() => {
+                const numbers = lead?.phone_number
+                  ?.split(",")
+                  .map((n) => n.trim())
+                  .filter((n) => n);
+
+                const isMultiple = numbers?.length > 1;
+
+                if (!numbers?.length) return "-";
+
+                return isMultiple ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <span
+                        className="text-gray-700 cursor-pointer hover:underline "
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {numbers.join(", ")}
+                      </span>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-56 p-2 rounded-xl shadow-xl">
+                      <p className="text-xs text-gray-500 mb-2 px-2">
+                        Select number to call
+                      </p>
+
+                      {numbers.map((num, i) => (
+                        <div
+                          key={i}
+                          onClick={() => (window.location.href = `tel:${num}`)}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-50 transition"
+                        >
+                          <PhoneIcon size={14} className="text-blue-500" />
+                          <span className="text-sm font-medium">{num}</span>
+                        </div>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <a
+                    href={`tel:${numbers[0]}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-gray-700 hover:underline"
+                  >
+                    {numbers[0]}
+                  </a>
+                );
+              })()}
             </p>
 
             <p className="break-words">

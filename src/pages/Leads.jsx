@@ -34,6 +34,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+
 export default function Leads() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({});
@@ -221,7 +227,7 @@ export default function Leads() {
       if (filters.search.length === 0 || filters.search.length >= 3) {
         setDebouncedSearch(filters.search);
       }
-    }, 400);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [filters.search]);
@@ -330,6 +336,9 @@ export default function Leads() {
       const payload = {
         ...form,
         assigned_to: role === "sales" ? user.sales_person_id : form.assigned_to,
+
+        // ✅ If source is empty → use user.name
+        // source: form.source?.trim() ? form.source : user.name,
       };
 
       if (editing) {
@@ -344,13 +353,11 @@ export default function Leads() {
         toast.success("Lead created successfully");
       }
 
-      // Reset state after success
       setOpen(false);
       setForm({});
       setEditing(null);
       fetchLeads(page);
     } catch (error) {
-      // 🔍 Handle duplicate phone number error (409 Conflict)
       if (error.response) {
         const status = error.response.status;
         const message = error.response.data?.message;
@@ -358,7 +365,6 @@ export default function Leads() {
         if (status === 409) {
           toast.error(message || "Phone number already registered");
         } else if (status === 422) {
-          // Validation errors
           const errors = error.response.data?.errors;
           if (errors) {
             Object.values(errors).forEach((errArray) => {
@@ -811,12 +817,61 @@ export default function Leads() {
 
                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
                         <p>
-                          <a
-                            href={`tel:${lead?.phone_number}`}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {lead?.phone_number}
-                          </a>
+                          {(() => {
+                            const numbers = lead?.phone_number
+                              ?.split(",")
+                              .map((n) => n.trim())
+                              .filter((n) => n);
+
+                            const isMultiple = numbers?.length > 1;
+
+                            if (!numbers?.length) return "-";
+
+                            return isMultiple ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <span
+                                    className="text-gray-700 cursor-pointer hover:underline "
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {numbers.join(", ")}
+                                  </span>
+                                </PopoverTrigger>
+
+                                <PopoverContent className="w-56 p-2 rounded-xl shadow-xl">
+                                  <p className="text-xs text-gray-500 mb-2 px-2">
+                                    Select number to call
+                                  </p>
+
+                                  {numbers.map((num, i) => (
+                                    <div
+                                      key={i}
+                                      onClick={() =>
+                                        (window.location.href = `tel:${num}`)
+                                      }
+                                      className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-50 transition"
+                                    >
+                                      <PhoneIcon
+                                        size={14}
+                                        className="text-blue-500"
+                                      />
+                                      <span className="text-sm font-medium">
+                                        {num}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <a
+                                href={`tel:${numbers[0]}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-gray-700 hover:underline"
+                              >
+                                {numbers[0]}
+                              </a>
+                            );
+                          })()}
                         </p>
                         <p>
                           <a
@@ -962,68 +1017,162 @@ export default function Leads() {
                         className="p-3 text-center whitespace-nowrap"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              (window.location.href = `tel:${lead?.phone_number}`)
-                            }
-                            className="bg-blue-500 hover:bg-blue-500/90"
-                          >
-                            <PhoneIcon />
-                          </Button>
+                        {(() => {
+                          const numbers = lead?.phone_number
+                            ?.split(",")
+                            .map((n) => n.trim())
+                            .filter((n) => n);
 
-                          <Button
-                            size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-white"
-                            onClick={() =>
-                              window.open(
-                                `https://wa.me/${lead?.phone_number}`,
-                                "_blank",
-                              )
-                            }
-                          >
-                            <FaWhatsapp size={16} />
-                          </Button>
+                          const isMultiple = numbers?.length > 1;
 
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setSelectedLeadId(lead?.lead_id);
-                              setStatusOpen(true);
-                            }}
-                          >
-                            <MdAdd />
-                          </Button>
+                          return (
+                            <div className="flex items-center justify-center gap-2">
+                              {/* 📞 CALL */}
+                              {isMultiple ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                                    >
+                                      <PhoneIcon />
+                                    </Button>
+                                  </PopoverTrigger>
 
-                          <Button
-                            size="sm"
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
-                            onClick={() => openNeedsModal(lead?.lead_id)}
-                          >
-                            <FaQuestionCircle />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="bg-amber-100 hover:bg-amber-200"
-                            onClick={() => openModal(lead)}
-                          >
-                            <FaRegEdit />
-                          </Button>
+                                  <PopoverContent className="w-52 p-2 rounded-xl shadow-xl">
+                                    <p className="text-xs text-gray-500 mb-2 px-2">
+                                      Call a number
+                                    </p>
 
-                          {role === "admin" && (
-                            <>
+                                    {numbers.map((num, i) => (
+                                      <div
+                                        key={i}
+                                        onClick={() =>
+                                          (window.location.href = `tel:${num}`)
+                                        }
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-50 transition"
+                                      >
+                                        <PhoneIcon
+                                          size={14}
+                                          className="text-blue-500"
+                                        />
+                                        <span className="text-sm font-medium">
+                                          {num}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                                  onClick={() =>
+                                    (window.location.href = `tel:${numbers?.[0]}`)
+                                  }
+                                >
+                                  <PhoneIcon />
+                                </Button>
+                              )}
+
+                              {/* 🟢 WHATSAPP */}
+                              {isMultiple ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-500 hover:bg-green-600 text-white"
+                                    >
+                                      <FaWhatsapp size={16} />
+                                    </Button>
+                                  </PopoverTrigger>
+
+                                  <PopoverContent className="w-52 p-2 rounded-xl shadow-xl">
+                                    <p className="text-xs text-gray-500 mb-2 px-2">
+                                      WhatsApp a number
+                                    </p>
+
+                                    {numbers.map((num, i) => (
+                                      <div
+                                        key={i}
+                                        onClick={() =>
+                                          window.open(
+                                            `https://wa.me/${num}`,
+                                            "_blank",
+                                          )
+                                        }
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-green-50 transition"
+                                      >
+                                        <FaWhatsapp
+                                          size={14}
+                                          className="text-green-500"
+                                        />
+                                        <span className="text-sm font-medium">
+                                          {num}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                  onClick={() =>
+                                    window.open(
+                                      `https://wa.me/${numbers?.[0]}`,
+                                      "_blank",
+                                    )
+                                  }
+                                >
+                                  <FaWhatsapp size={16} />
+                                </Button>
+                              )}
+
+                              {/* ➕ STATUS */}
                               <Button
                                 size="sm"
-                                variant="destructive"
-                                onClick={() => deleteLead(lead?.lead_id)}
+                                onClick={() => {
+                                  setSelectedLeadId(lead?.lead_id);
+                                  setStatusOpen(true);
+                                }}
+                                className="hover:bg-gray-100"
                               >
-                                <MdDelete />
+                                <MdAdd />
                               </Button>
-                            </>
-                          )}
-                        </div>
+
+                              {/* ❓ NEEDS */}
+                              <Button
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={() => openNeedsModal(lead?.lead_id)}
+                              >
+                                <FaQuestionCircle />
+                              </Button>
+
+                              {/* ✏️ EDIT */}
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="bg-amber-100 hover:bg-amber-200"
+                                onClick={() => openModal(lead)}
+                              >
+                                <FaRegEdit />
+                              </Button>
+
+                              {/* 🗑 DELETE */}
+                              {role === "admin" && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteLead(lead?.lead_id)}
+                                >
+                                  <MdDelete />
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -1121,15 +1270,29 @@ export default function Leads() {
                   <div className="text-xs mt-2 space-y-1 text-muted-foreground">
                     <p>
                       <b>Phone:</b>{" "}
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.location.href = `tel:${lead?.phone_number}`;
-                        }}
-                        className="text-blue-500"
-                      >
-                        {lead?.phone_number}
-                      </span>
+                      {lead?.phone_number?.includes(",") ? (
+                        lead.phone_number.split(",").map((num, i) => {
+                          const cleanNum = num.trim();
+
+                          return (
+                            <a
+                              key={i}
+                              href={`tel:${cleanNum}`}
+                              onClick={(e) => e.stopPropagation()}
+                              // style={{ display: "block" }} // each number on new line (optional)
+                            >
+                              {cleanNum}{" "}
+                            </a>
+                          );
+                        })
+                      ) : (
+                        <a
+                          href={`tel:${lead?.phone_number}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {lead?.phone_number}
+                        </a>
+                      )}
                     </p>
                     <p>
                       <b>Email:</b>{" "}
@@ -1157,11 +1320,12 @@ export default function Leads() {
                         </p>
 
                         <p>
-                          <b>Assigned:</b> {lead.sales_person?.name && (
-                          <Badge className={"bg-[#3E2C23] text-white"}>
-                            {lead.sales_person?.name}
-                          </Badge>
-                        )}
+                          <b>Assigned:</b>{" "}
+                          {lead.sales_person?.name && (
+                            <Badge className={"bg-[#3E2C23] text-white"}>
+                              {lead.sales_person?.name}
+                            </Badge>
+                          )}
                         </p>
                       </>
                     )}
@@ -1180,70 +1344,166 @@ export default function Leads() {
                     className="flex flex-wrap gap-2 mt-3"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-blue-500"
-                      onClick={() =>
-                        (window.location.href = `tel:${lead?.phone_number}`)
-                      }
-                    >
-                      <PhoneIcon />
-                    </Button>
+                    {(() => {
+                      const numbers = lead?.phone_number
+                        ?.split(",")
+                        .map((n) => n.trim())
+                        .filter((n) => n);
 
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-green-500 text-white"
-                      onClick={() =>
-                        window.open(
-                          `https://wa.me/${lead?.phone_number}`,
-                          "_blank",
-                        )
-                      }
-                    >
-                      <FaWhatsapp />
-                    </Button>
+                      const isMultiple = numbers?.length > 1;
 
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => {
-                        setSelectedLeadId(lead?.lead_id);
-                        setStatusOpen(true);
-                      }}
-                    >
-                      + Status
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
-                      onClick={() => openNeedsModal(lead?.lead_id)}
-                    >
-                      <FaQuestionCircle />
-                    </Button>
+                      return (
+                        <>
+                          {/* 📞 CALL */}
+                          {isMultiple ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  className="flex-1 bg-blue-500 hover:bg-blue-600"
+                                >
+                                  <PhoneIcon />
+                                </Button>
+                              </PopoverTrigger>
 
-                    {role === "admin" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="flex-1"
-                          onClick={() => openModal(lead)}
-                        >
-                          <FaRegEdit />
-                          Edit
-                        </Button>
+                              <PopoverContent className="w-56 p-2 rounded-xl shadow-xl">
+                                <p className="text-xs text-gray-500 mb-2 px-2">
+                                  Choose number to call
+                                </p>
 
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="flex-1"
-                          onClick={() => deleteLead(lead?.lead_id)}
-                        >
-                          <MdDelete />
-                          Delete
-                        </Button>
-                      </>
-                    )}
+                                {numbers.map((num, i) => (
+                                  <div
+                                    key={i}
+                                    onClick={() =>
+                                      (window.location.href = `tel:${num}`)
+                                    }
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-blue-50 transition"
+                                  >
+                                    <PhoneIcon
+                                      className="text-blue-500"
+                                      size={14}
+                                    />
+                                    <span className="text-sm font-medium">
+                                      {num}
+                                    </span>
+                                  </div>
+                                ))}
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-blue-500 hover:bg-blue-600"
+                              onClick={() =>
+                                (window.location.href = `tel:${numbers?.[0]}`)
+                              }
+                            >
+                              <PhoneIcon />
+                            </Button>
+                          )}
+
+                          {/* 🟢 WHATSAPP */}
+                          {isMultiple ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                                >
+                                  <FaWhatsapp />
+                                </Button>
+                              </PopoverTrigger>
+
+                              <PopoverContent className="w-56 p-2 rounded-xl shadow-xl">
+                                <p className="text-xs text-gray-500 mb-2 px-2">
+                                  Choose number for WhatsApp
+                                </p>
+
+                                {numbers.map((num, i) => (
+                                  <div
+                                    key={i}
+                                    onClick={() =>
+                                      window.open(
+                                        `https://wa.me/${num}`,
+                                        "_blank",
+                                      )
+                                    }
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-green-50 transition"
+                                  >
+                                    <FaWhatsapp
+                                      className="text-green-500"
+                                      size={14}
+                                    />
+                                    <span className="text-sm font-medium">
+                                      {num}
+                                    </span>
+                                  </div>
+                                ))}
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                              onClick={() =>
+                                window.open(
+                                  `https://wa.me/${numbers?.[0]}`,
+                                  "_blank",
+                                )
+                              }
+                            >
+                              <FaWhatsapp />
+                            </Button>
+                          )}
+
+                          {/* ➕ STATUS */}
+                          <Button
+                            size="sm"
+                            className="flex-1 hover:bg-gray-100"
+                            onClick={() => {
+                              setSelectedLeadId(lead?.lead_id);
+                              setStatusOpen(true);
+                            }}
+                          >
+                            + Status
+                          </Button>
+
+                          {/* ❓ NEEDS */}
+                          <Button
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            onClick={() => openNeedsModal(lead?.lead_id)}
+                          >
+                            <FaQuestionCircle />
+                          </Button>
+
+                          {/* ADMIN */}
+                          {role === "admin" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="flex-1 hover:bg-gray-200"
+                                onClick={() => openModal(lead)}
+                              >
+                                <FaRegEdit />
+                                Edit
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="flex-1"
+                                onClick={() => deleteLead(lead?.lead_id)}
+                              >
+                                <MdDelete />
+                                Delete
+                              </Button>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}
