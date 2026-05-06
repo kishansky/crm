@@ -15,6 +15,7 @@ import Links from "@/pages/Links";
 import ThankYou from "@/pages/ThankYou";
 import TeamStatusReport from "@/pages/TeamStatusReport";
 import Places from "@/pages/Places";
+import NewLeads from "@/pages/NewLeads";
 
 export default function AppRouter() {
   return (
@@ -25,6 +26,7 @@ export default function AppRouter() {
 
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute> } />
         <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
+        <Route path="/new-leads" element={<ProtectedRoute><NewLeads /></ProtectedRoute>} />
         <Route path="/leads/:id" element={<ProtectedRoute><LeadDetails /></ProtectedRoute>} />
         <Route path="/sales-team" element={<ProtectedRoute><SalesTeam /></ProtectedRoute>} />
         <Route path="/performance" element={<ProtectedRoute><Performance /></ProtectedRoute>} />

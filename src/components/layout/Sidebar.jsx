@@ -18,6 +18,7 @@ export default function Sidebar({ open, setOpen }) {
   const adminMenu = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Leads", path: "/leads", icon: Users, match: ["/leads", "/lead"] },
+    { name: "New-Leads", path: "/new-leads", icon: Users, match: ["/new-leads", "/new-leads"] },
     { name: "Follow-Up", path: "/follow-up", icon: PhoneCall },
     { name: "Sales Team", path: "/sales-team", icon: Users },
     { name: "Team Reports", path: "/team-status-reports", icon: BarChart3 },
@@ -31,6 +32,7 @@ export default function Sidebar({ open, setOpen }) {
   const salesMenu = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Leads", path: "/leads", icon: Users, match: ["/leads", "/lead"] },
+    { name: "New-Leads", path: "/new-leads", icon: Users, match: ["/new-leads", "/new-leads"] },
     { name: "Follow-Up", path: "/follow-up", icon: PhoneCall },
     { name: "My Reports", path: "/team-status-reports", icon: BarChart3 },
   ];

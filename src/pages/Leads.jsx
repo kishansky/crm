@@ -62,6 +62,7 @@ export default function Leads() {
     start_date: "",
     end_date: "",
     limit: null,
+    status: "",
   });
   const role = localStorage.getItem("role");
   const user = JSON.parse(localStorage.getItem("user"));
@@ -511,7 +512,7 @@ export default function Leads() {
   const exportFile = async (format) => {
     try {
       const res = await api.post(
-        "/leads-export", // ✅ single API
+        "/leads-export",
         {
           columns: selectedColumns,
           lead_ids: selectedLeads,
@@ -519,7 +520,8 @@ export default function Leads() {
           start_date: exportFilters.start_date,
           end_date: exportFilters.end_date,
           limit: exportFilters.limit,
-          format: format, // ✅ important
+          status: exportFilters.status, // ✅ ADD
+          format: format,
         },
         { responseType: "blob" },
       );
@@ -1805,6 +1807,25 @@ export default function Leads() {
               <option value="">All Sales</option>
               {sales.map((s) => (
                 <option key={s.sales_person_id} value={s.sales_person_id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="border p-2 w-full rounded"
+              value={exportFilters.status}
+              onChange={(e) =>
+                setExportFilters({
+                  ...exportFilters,
+                  status: e.target.value,
+                })
+              }
+            >
+              <option value="">All Status</option>
+
+              {statuses.map((s) => (
+                <option key={s.id} value={s.name}>
                   {s.name}
                 </option>
               ))}
